@@ -75,19 +75,44 @@ def flatten_light(img):
     return out
 
 
-def extract_ink(flat, blank):
-    """Alpha mask of handwriting: darker than the printed form at the same spot."""
+def pen_colour_weight(warped):
+    """0..1 per pixel: how clearly coloured (blue or red pen) it is.
+
+    Printed parts are grey, especially when the form was printed in black and white, while
+    ballpoint ink is clearly blue (or red). Returns None for a black pen (then only darkness
+    is used).
+    """
+    w = cv2.GaussianBlur(warped.astype(np.float32), (0, 0), 1.0)
+    b, g, r = w[:, :, 0], w[:, :, 1], w[:, :, 2]
+    chroma = np.maximum(b - np.maximum(r, g), r - np.maximum(g, b))
+    gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+    dark = gray < 150
+    if dark.sum() == 0 or (chroma[dark] > 15).mean() < 0.02:
+        return None  # looks like black ink
+    weight = np.clip((chroma - 6) / 10, 0, 1)
+    # stroke edges are less saturated than their cores: grow the coloured areas slightly
+    return cv2.dilate(weight, np.ones((5, 5), np.uint8))
+
+
+def extract_ink(flat, blank, colour=None):
+    """Alpha mask of handwriting: darker than the printed form at the same spot
+    (and, when the pen is coloured, clearly blue or red)."""
     gray = cv2.cvtColor(flat.astype(np.uint8), cv2.COLOR_BGR2GRAY).astype(np.float32) / 255
     bgray = cv2.cvtColor(blank, cv2.COLOR_BGR2GRAY).astype(np.float32) / 255
     # how dark the printed form is around each pixel (tolerates slight misalignment)
     bdark = cv2.dilate(1 - bgray, np.ones((9, 9), np.uint8))
     ink = (1 - gray) - bdark
     alpha = np.clip((ink - 0.10) / 0.30, 0, 1)
-    # drop specks (dust, noise) smaller than ~0.4 mm²
+    if colour is not None:
+        alpha = alpha * colour
+    # drop specks (dust, noise) smaller than ~0.4 mm², and fragments that lie almost
+    # entirely on printed lines (leftovers of the printed form, not handwriting)
     mask = (alpha > 0.25).astype(np.uint8)
     n, labels, stats, _ = cv2.connectedComponentsWithStats(mask, 8)
+    printed = cv2.dilate(((1 - bgray) > 0.25).astype(np.uint8), np.ones((11, 11), np.uint8)).astype(bool)
+    on_print = np.bincount(labels[printed].ravel(), minlength=n) / np.maximum(stats[:, cv2.CC_STAT_AREA], 1)
     keep = np.zeros(n, bool)
-    keep[1:] = stats[1:, cv2.CC_STAT_AREA] >= 40
+    keep[1:] = (stats[1:, cv2.CC_STAT_AREA] >= 40) & (on_print[1:] < 0.85)
     alpha = alpha * keep[labels]
     return cv2.GaussianBlur(alpha, (0, 0), 0.7)
 
@@ -154,7 +179,7 @@ def import_doc(doc):
     scan = cv2.imread(str(scan_path))
     warped, n_in, n_good = register(scan, blank)
     flat = flatten_light(warped)
-    alpha = extract_ink(flat, blank)
+    alpha = extract_ink(flat, blank, pen_colour_weight(warped))
     out = composite(blank, flat, alpha)
     (ROOT / 'tools' / 'build').mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(ROOT / 'tools' / 'build' / f'{doc}-aligned.jpg'), warped, [cv2.IMWRITE_JPEG_QUALITY, 85])

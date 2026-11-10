@@ -132,3 +132,9 @@ Settings live at the top of `js/ar.js` plus `TRACKING_KEYFRAME` in `tools/vendor
 - Doc 2: `scans/photo.jpg` is centre-cropped into the photo area by make-print. **After a real photo arrives, `SPOTS` in `doc2.data.js` (and the report wording) must be rewritten to match what is actually in the photo.**
 - After importing real scans: `npm run targets`, `npm run inspect` (≥ 25 points each) and rerun the confusion test before shipping.
 - The user uploads photos to their GitHub repo; fetch with the add_repo tool, then copy to `scans/` as doc1.jpg, doc3.jpg, doc4.jpg, photo.jpg.
+
+## Status after importing the real files
+- `scans/doc1.jpg`, `scans/doc4.jpg` (user's handwriting, forms printed in black and white, blue ballpoint) and `scans/photo.jpg` (construction site, used with the owner's permission; only 1000x750, so Doc 2 shows it full-width at about 140 DPI) are imported. Source: the user's repo holidays-cloud/expo-ar-demo (files uploaded to its root).
+- `import-scans.py` now also requires ink to be clearly blue or red (`pen_colour_weight`), because a black-and-white print makes printed parts darker than the colour form; falls back to darkness only for a black pen. Fragments lying ≥ 85 % on printed lines are dropped.
+- Doc 2 is now an official «گزارش تصویری روزانهٔ کارگاه»; SPOTS/REPORT describe the real photo (pump, mixer truck, scaffold, sand piles; follow-up: open slab edges without guardrail).
+- Tracking points (256 px keyframe): doc1 33, doc2 42, doc3 36, doc4 33. Confusion test: 0 wrong, 0 missed.

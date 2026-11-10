@@ -36,11 +36,13 @@ mkdirSync(join(root, 'print', 'templates'), { recursive: true });
 mkdirSync(join(root, 'print', 'assets'), { recursive: true });
 let photoParam = '';
 if (docs.includes('doc2') && existsSync(PHOTO_SRC)) {
-  // Fill the 182 x 200 mm photo area at 300 DPI: auto-orient, centre-crop, gentle auto-level.
-  execFileSync('convert', [PHOTO_SRC, '-auto-orient', '-resize', '2150x2363^', '-gravity', 'center', '-extent', '2150x2363', '-auto-level', '-quality', '90', join(root, 'print', 'assets', 'doc2-photo.jpg')]);
-  photoParam = '&photo=1';
-  console.log('doc2: using the real photo from scans/photo.jpg');
+  // Crop as set in doc2.data.js (cuts the empty sky), size it for 300 DPI, gentle sharpening.
+  const { PHOTO, PHOTO_CROP: C } = await import('../js/docs/doc2.data.js');
+  const pw = Math.round(PHOTO.w / 25.4 * 300), ph = Math.round(PHOTO.h / 25.4 * 300);
+  execFileSync('convert', [PHOTO_SRC, '-auto-orient', '-crop', `${C.w}x${C.h}+${C.x}+${C.y}`, '+repage', '-filter', 'Lanczos', '-resize', `${pw}x${ph}!`, '-unsharp', '0x1.2+0.6+0.02', '-quality', '90', join(root, 'print', 'assets', 'doc2-photo.jpg')]);
+  console.log('doc2: using the photo from scans/photo.jpg');
 }
+if (docs.includes('doc2') && existsSync(join(root, 'print', 'assets', 'doc2-photo.jpg'))) photoParam = '&photo=1';
 
 try {
   for (const doc of docs) {
