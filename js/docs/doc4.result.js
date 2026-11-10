@@ -10,6 +10,7 @@ export function renderResult() {
       h('strong', {}, `${T.diffLabel}: ${RESULT.title}`),
       h('p', {}, `${T.invoice}: ${RESULT.invoice} · ${T.slip}: ${RESULT.received} · ${RESULT.diff}`),
       h('p', {}, `${T.amountLabel}: ${RESULT.amount}`),
+      h('p', {}, RESULT.slipNote),
       h('p', { class: 'muted' }, RESULT.next),
     ),
     h('h3', {}, T.compareTitle),

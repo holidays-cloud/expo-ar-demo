@@ -76,6 +76,8 @@ Generate the print-ready document images yourself with a script (SVG to PNG), at
 - **Camera denied/unavailable:** one plain Farsi screen explaining how to allow the camera, suggesting the in-app-browser fix, and asking the visitor to ask our staff. A retry button.
 - **Every result card** keeps a short Farsi line saying it is a demonstration prepared in advance.
 - **Steadiness matters:** the overlay must stay locked to the paper (see "Steadiness" below).
+- **Official-looking forms** (user request, after rejecting found templates): Doc 1 is «درخواست خرید و برنامهٔ شیفت» and Doc 4 is «صورتحساب فروش کالا» + yellow «رسید تحویل کالا به انبار», built from the official-form helpers in `tools/print/lib.js` (formHeader, sectionBar, signatureBoxes, roundStamp, rectStamp, sideStrip, edgeTab, punchHoles, qrBlock). No decorative corner marks on these two; their tracking comes from the dark header cell, section bars, stamps, side strip, tabs and QR (blank forms alone: 30 points each).
+- **Real handwriting and a real photo** (user request). Content stays general (not construction); the Doc 2 photo will be a construction site (the user's 4th sample photo, the concrete frame with the pump truck, pending the original file and permission). Docs 1 and 4 are printed as blank forms (Doc 3 floor plan stays printed for now), filled in by hand, photographed, and imported; Doc 2 uses the user's own workplace photo. Until those files arrive, the font-based versions are used.
 - Each document needs ≥ 25 tracking points on the 128 px keyframe and must never be confused with another (both checked; see Tooling).
 
 # Implementation notes (kept up to date by Claude between sessions)
@@ -122,3 +124,11 @@ Settings live at the top of `js/ar.js` plus `TRACKING_KEYFRAME` in `tools/vendor
 - The lock holds the overlay while the change stays within 0.9 % of the page width / 0.9°, and follows quickly beyond that. During continuous movement the overlay trails by up to about 1 % of the page width (a few pixels), then catches up.
 - missTolerance 10 keeps the overlay up through brief tracking drops (~0.3 s at 30 fps) instead of blinking; warmup 6 adds ~0.05 s before it first appears.
 - Test hooks: `window.__AR_TUNE` (override settings) and `window.__AR_DEBUG` (pose log) are only set by automated tests.
+
+## Real handwriting pipeline
+- `npm run print` = `tools/make-print.mjs` (generated versions + `print/templates/docN-blank.pdf` forms + `docN-example.pdf` to copy from + combined `1-PRINT-these-blank-forms.pdf` / `2-COPY-from-these-examples.pdf` + `docN-fields.json`) then `tools/import-scans.py`.
+- `tools/print/lib.js` `MODE.template` + `ink(fn)`: in blank-form mode pen work is drawn then removed, so random numbers (wobbly grid, barcode, border) are identical between blank and example. Keep using `ink()` / `handLine()` for anything written by hand.
+- `tools/import-scans.py` (Python, `pip install opencv-python-headless`): `scans/docN.jpg` → SIFT + RANSAC homography onto the blank → ECC refine → lighting flattened → ink = darker than the printed form (9 px dilation tolerance) → ink composited over the clean form → `print/docN.png/.pdf`, `img/docN.jpg`; for Doc 1 it re-measures `doc1.layout.js` by assigning word blobs to the nearest expected field. Tested with simulated phone photos: mean difference vs original < 1/255 (docs 1, 4); 32/33 Doc 1 pieces in place.
+- Doc 2: `scans/photo.jpg` is centre-cropped into the photo area by make-print. **After a real photo arrives, `SPOTS` in `doc2.data.js` (and the report wording) must be rewritten to match what is actually in the photo.**
+- After importing real scans: `npm run targets`, `npm run inspect` (≥ 25 points each) and rerun the confusion test before shipping.
+- The user uploads photos to their GitHub repo; fetch with the add_repo tool, then copy to `scans/` as doc1.jpg, doc3.jpg, doc4.jpg, photo.jpg.

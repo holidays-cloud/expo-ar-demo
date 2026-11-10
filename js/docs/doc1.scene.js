@@ -103,6 +103,11 @@ function paintBase() {
     ctx.beginPath(); ctx.moveTo(x, G.rows[0]); ctx.lineTo(x, G.rows[3]); ctx.stroke();
   });
 
+  // day headers and row labels (printed on the paper too, so they come with the panel)
+  DAYS.forEach((d, k) => text(ctx, d, ...mid(CLEAN.cells['hd' + k]), { size: 3, weight: 700, align: 'center' }));
+  text(ctx, ROW_LABELS.morning, ...mid(CLEAN.cells.hl_m), { size: 3.4, weight: 700, align: 'center' });
+  text(ctx, ROW_LABELS.evening, ...mid(CLEAN.cells.hl_e), { size: 3.4, weight: 700, align: 'center' });
+
   // notes title + footer
   const [nx, ny, nw, nh] = CLEAN.notesTitle;
   text(ctx, S.doc1.notesTitle, nx + nw, ny + nh / 2, { size: 3.6, weight: 700 });
@@ -134,9 +139,6 @@ function paintRows() {
   const m = CLEAN.meta;
   text(ctx, META, m[0] + 1, m[1] + m[3] / 2, { size: 3, color: MUTED, align: 'left' });
 
-  DAYS.forEach((d, k) => text(ctx, d, ...mid(CLEAN.cells['hd' + k]), { size: 3, weight: 700, align: 'center' }));
-  text(ctx, ROW_LABELS.morning, ...mid(CLEAN.cells.hl_m), { size: 3.4, weight: 700, align: 'center' });
-  text(ctx, ROW_LABELS.evening, ...mid(CLEAN.cells.hl_e), { size: 3.4, weight: 700, align: 'center' });
   SHIFT_NAMES.morning.forEach((n, k) => text(ctx, n, ...mid(CLEAN.cells['cm' + k]), { size: 3.5, align: 'center' }));
   SHIFT_NAMES.evening.forEach((n, k) => text(ctx, n, ...mid(CLEAN.cells['ce' + k]), { size: 3.5, align: 'center' }));
 

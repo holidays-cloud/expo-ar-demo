@@ -2,6 +2,23 @@
 // by tools/make-print.mjs). Everything is deterministic: same seed, same drawing.
 export const NS = 'http://www.w3.org/2000/svg';
 
+// Blank-form mode: when true, everything a person writes or draws by pen is left out, so the
+// sheet can be printed and filled in by hand (see tools/make-print.mjs --template).
+export const MODE = { template: false, collecting: null, readable: false };
+/**
+ * Pen work (doodles, ticks, signatures...). In blank-form mode it is still drawn and then
+ * removed, so the random numbers used by everything else stay identical between the blank
+ * form and the filled example (otherwise the printed "hand-drawn" grid would differ).
+ */
+export function ink(fn) {
+  if (!MODE.template) return fn();
+  const outer = MODE.collecting;
+  MODE.collecting = [];
+  fn();
+  MODE.collecting.forEach((e) => e.remove());
+  MODE.collecting = outer;
+}
+
 export function rng(seed) { // mulberry32
   let a = seed >>> 0;
   return () => {
@@ -16,6 +33,7 @@ export function el(tag, attrs = {}, parent) {
   const e = document.createElementNS(NS, tag);
   for (const [k, v] of Object.entries(attrs)) if (v !== undefined && v !== null) e.setAttribute(k, String(v));
   if (parent) parent.appendChild(e);
+  if (MODE.collecting) MODE.collecting.push(e);
   return e;
 }
 
@@ -62,17 +80,28 @@ export function loop(parent, cx, cy, rx, ry, R, opts = {}) {
 
 // Handwritten line made of segments written right-to-left.
 export function handLine(svg, item, R, fontFamily = 'HandFa') {
+  if (MODE.template) { // blank form: the person writes this by hand (see ink())
+    let g; ink(() => { g = drawHandLine(svg, item, R, fontFamily); });
+    return g;
+  }
+  return drawHandLine(svg, item, R, fontFamily);
+}
+function drawHandLine(svg, item, R, fontFamily) {
+  // readable example sheet: same positions, plain Vazirmatn so the writer can read it easily
+  if (MODE.readable) { fontFamily = 'Vazirmatn'; item = { ...item, size: item.size * 0.8, weight: 500 }; }
   const g = el('g', { 'data-piece': item.id, transform: `rotate(${item.rot || 0} ${item.x} ${item.y})` }, svg);
   const gap = item.size * 0.55;
   let cursor = item.x;
   for (const seg of item.segs) {
+    if (seg.x !== undefined) cursor = seg.x; // jump to a table column
+    const align = seg.align || item.align;
     const t = el('text', {
       x: r2(cursor), y: item.y, 'font-family': fontFamily, 'font-size': item.size, 'font-weight': item.weight || 700, fill: item.ink,
-      direction: 'rtl', 'unicode-bidi': 'embed', 'text-anchor': item.align === 'middle' ? 'middle' : 'start',
+      direction: 'rtl', 'unicode-bidi': 'embed', 'text-anchor': align === 'middle' ? 'middle' : 'start',
     }, g);
     t.textContent = seg.t;
     const w = t.getComputedTextLength();
-    const right = item.align === 'middle' ? cursor + w / 2 : cursor;
+    const right = align === 'middle' ? cursor + w / 2 : cursor;
     const left = right - w;
     const pen = { color: item.ink, width: item.size * 0.11 };
     if (seg.strike) {
@@ -152,4 +181,120 @@ export function qrBlock(svg, x, y, size, R, color = '#1e2a36', paper = '#fbfaf6'
     if (!inFinder && R() < 0.48) el('rect', { x: r2(x + i * c), y: r2(y + j * c), width: r2(c + 0.02), height: r2(c + 0.02), fill: color }, svg);
   }
   finder(0, 0); finder(n - 7, 0); finder(0, n - 7);
+}
+
+// ---- Official-form building blocks (Iranian business-form style) --------------------
+const FORM_DARK = '#1f2a3a';
+const FORM_PAPER = '#fdfcf8';
+
+/** Thin double page frame used on official forms. */
+export function formFrame(svg, W, H) {
+  el('rect', { x: 8, y: 8, width: W - 16, height: H - 16, fill: 'none', stroke: FORM_DARK, 'stroke-width': 0.8 }, svg);
+  el('rect', { x: 9.6, y: 9.6, width: W - 19.2, height: H - 19.2, fill: 'none', stroke: FORM_DARK, 'stroke-width': 0.25 }, svg);
+}
+
+/** Fictional company emblem (not our brand). */
+export function emblem(svg, cx, cy, r, color = FORM_DARK, paper = FORM_PAPER) {
+  const g = el('g', { transform: `translate(${cx} ${cy})` }, svg);
+  const hex = (rr) => Array.from({ length: 6 }, (_, i) => { const a = Math.PI / 6 + i * Math.PI / 3; return `${r2(Math.cos(a) * rr)},${r2(Math.sin(a) * rr)}`; }).join(' ');
+  el('polygon', { points: hex(r), fill: color }, g);
+  el('polygon', { points: hex(r * 0.72), fill: 'none', stroke: paper, 'stroke-width': r * 0.09 }, g);
+  [-0.26, 0, 0.26].forEach((y, i) => el('rect', { x: -r * (0.36 - i * 0.07), y: r * (y - 0.06), width: r * (0.72 - i * 0.14), height: r * 0.12, fill: paper }, g));
+}
+
+/**
+ * Header box: company (right) | dark title cell (middle) | number/date/attachment (left).
+ * Returns the y where the header ends.
+ */
+export function formHeader(svg, { y = 12, h = 30, company, unit, title, subtitle, fields = ['شماره:', 'تاریخ:', 'پیوست:'], fieldValues = {} }) {
+  const x1 = 14, x2 = 196, cRight = 150, cLeft = 64;
+  el('rect', { x: x1, y, width: x2 - x1, height: h, fill: FORM_PAPER, stroke: FORM_DARK, 'stroke-width': 0.9 }, svg);
+  el('rect', { x: cLeft, y, width: cRight - cLeft, height: h, fill: FORM_DARK }, svg);
+  emblem(svg, 186, y + h / 2 - 2, 7);
+  // company name and unit shrink to fit between the emblem and the dark title cell
+  const fit = (t, maxW) => { const w = t.getComputedTextLength(); if (w > maxW) t.setAttribute('font-size', String(parseFloat(t.getAttribute('font-size')) * maxW / w)); };
+  fit(printedText(svg, company, 176, y + h / 2 - 1.5, { size: 3.8, weight: 800, color: FORM_DARK }), 176 - cRight - 2);
+  fit(printedText(svg, unit, 176, y + h / 2 + 4.5, { size: 2.7, weight: 500, color: '#4b5565' }), 176 - cRight - 2);
+  printedText(svg, title, (cLeft + cRight) / 2, y + h / 2 + (subtitle ? 0 : 2), { size: 5.4, weight: 900, color: FORM_PAPER, anchor: 'middle' });
+  if (subtitle) printedText(svg, subtitle, (cLeft + cRight) / 2, y + h / 2 + 6.5, { size: 2.9, weight: 500, color: '#c3cad6', anchor: 'middle' });
+  fields.forEach((f, i) => {
+    const fy = y + 9.5 + i * 8.5;
+    printedText(svg, f, cLeft - 2, fy, { size: 3.2, weight: 700, color: FORM_DARK });
+    if (fieldValues[f]) printedText(svg, fieldValues[f], cLeft - 15, fy, { size: 3.2, weight: 500, color: '#3b4452' });
+    else el('line', { x1: x1 + 4, x2: cLeft - 15, y1: fy + 0.8, y2: fy + 0.8, stroke: '#8d95a3', 'stroke-width': 0.3, 'stroke-dasharray': '0.8 0.8' }, svg);
+  });
+  return y + h;
+}
+
+/** Dark section bar with a number badge and title. */
+export function sectionBar(svg, y, num, title, { x1 = 14, x2 = 196, h = 7 } = {}) {
+  el('rect', { x: x1, y, width: x2 - x1, height: h, fill: FORM_DARK }, svg);
+  el('rect', { x: x2 - 9, y, width: 9, height: h, fill: '#c9a45c' }, svg);
+  printedText(svg, num, x2 - 4.5, y + h / 2 + 1.3, { size: 3.6, weight: 900, color: FORM_DARK, anchor: 'middle' });
+  printedText(svg, title, x2 - 12, y + h / 2 + 1.3, { size: 3.6, weight: 800, color: FORM_PAPER });
+}
+
+/** Signature boxes with role on top and "name and signature" at the bottom. */
+export function signatureBoxes(svg, y, roles, { x1 = 14, x2 = 196, h = 24 } = {}) {
+  const w = (x2 - x1) / roles.length;
+  roles.forEach((role, i) => {
+    const bx = x2 - w * (i + 1);
+    el('rect', { x: bx, y, width: w, height: h, fill: 'none', stroke: FORM_DARK, 'stroke-width': 0.6 }, svg);
+    el('rect', { x: bx, y, width: w, height: 6, fill: FORM_DARK }, svg);
+    printedText(svg, role, bx + w / 2, y + 4.3, { size: 3, weight: 800, color: FORM_PAPER, anchor: 'middle' });
+    printedText(svg, 'نام و امضا', bx + w / 2, y + h - 2, { size: 2.4, weight: 500, color: '#6b7380', anchor: 'middle' });
+  });
+  return (i) => [x2 - w * (i + 1), y, w, h];
+}
+
+/** Round rubber stamp (printed; on real paperwork it would be stamped by hand). */
+export function roundStamp(svg, cx, cy, r, top, middle, bottom, R, { color = '#b0281f', rot = -14 } = {}) {
+  const g = el('g', { transform: `rotate(${rot} ${cx} ${cy})`, opacity: 0.85 }, svg);
+  el('circle', { cx, cy, r, fill: 'none', stroke: color, 'stroke-width': r * 0.11 }, g);
+  el('circle', { cx, cy, r: r * 0.78, fill: 'none', stroke: color, 'stroke-width': r * 0.04 }, g);
+  el('rect', { x: cx - r * 1.08, y: cy - r * 0.24, width: r * 2.16, height: r * 0.48, fill: FORM_PAPER, stroke: color, 'stroke-width': r * 0.07 }, g);
+  printedText(g, middle, cx, cy + r * 0.11, { size: r * 0.3, weight: 900, color, anchor: 'middle' });
+  printedText(g, top, cx, cy - r * 0.4, { size: r * 0.18, weight: 700, color, anchor: 'middle' });
+  printedText(g, bottom, cx, cy + r * 0.58, { size: r * 0.2, weight: 700, color, anchor: 'middle' });
+  for (let i = 0; i < 16; i++) el('circle', { cx: r2(cx + (R() - 0.5) * r * 2), cy: r2(cy + (R() - 0.5) * r * 2), r: r2(0.2 + R() * 0.45), fill: FORM_PAPER }, g);
+}
+
+/** Barcode strip (decorative). */
+export function barcode(svg, x, y, w, h, R, color = FORM_DARK) {
+  let bx = x;
+  while (bx < x + w) { const bw = 0.35 + Math.floor(R() * 4) * 0.4; if (bx + bw > x + w) break; el('rect', { x: r2(bx), y, width: r2(bw), height: h, fill: color }, svg); bx += bw + 0.35 + R() * 0.8; }
+}
+
+/** Dark vertical strip in the left margin with the form code (as on printed form pads). */
+export function sideStrip(svg, H, code, { x = 2.6, w = 4.6, y1 = 70, y2 = 228 } = {}) {
+  el('rect', { x, y: y1, width: w, height: y2 - y1, fill: FORM_DARK }, svg);
+  const cy = (y1 + y2) / 2;
+  const t = printedText(svg, code, x + w / 2 + 1.1, cy, { size: 3, weight: 800, color: FORM_PAPER, anchor: 'middle' });
+  t.setAttribute('transform', `rotate(-90 ${x + w / 2 + 1.1} ${cy})`);
+  // uneven light notches make the strip easy to tell apart from any other edge
+  [[9, 2.2], [24, 4], [cy - y1 + 26, 2.6], [y2 - y1 - 30, 5], [y2 - y1 - 12, 2.2]].forEach(([o, hh]) => el('rect', { x, y: y1 + o, width: w, height: hh, fill: '#c9a45c' }, svg));
+}
+
+/** Rectangular rubber stamp (e.g. «فوری»). */
+export function rectStamp(svg, cx, cy, w, h, label, { color = '#b0281f', rot = -8, solid = false } = {}) {
+  const g = el('g', { transform: `rotate(${rot} ${cx} ${cy})`, opacity: 0.92 }, svg);
+  if (solid) {
+    el('rect', { x: cx - w / 2, y: cy - h / 2, width: w, height: h, rx: 1.4, fill: color }, g);
+    printedText(g, label, cx, cy + h * 0.17, { size: h * 0.5, weight: 900, color: FORM_PAPER, anchor: 'middle' });
+    return;
+  }
+  el('rect', { x: cx - w / 2, y: cy - h / 2, width: w, height: h, rx: 1.4, fill: 'none', stroke: color, 'stroke-width': 1.6 }, g);
+  el('rect', { x: cx - w / 2 + 1.6, y: cy - h / 2 + 1.6, width: w - 3.2, height: h - 3.2, rx: 0.8, fill: 'none', stroke: color, 'stroke-width': 0.5 }, g);
+  printedText(g, label, cx, cy + h * 0.17, { size: h * 0.48, weight: 900, color, anchor: 'middle' });
+}
+
+/** Two punched binder holes (right margin). */
+export function punchHoles(svg, W, ys = [100, 197]) {
+  ys.forEach((y) => { el('circle', { cx: W - 4.6, cy: y, r: 2.8, fill: '#3a3f4a' }, svg); el('circle', { cx: W - 4.6, cy: y, r: 2.8, fill: 'none', stroke: '#c9c3b5', 'stroke-width': 0.5 }, svg); });
+}
+
+/** Small dark tab on the page edge, e.g. «نسخهٔ ۱ · بایگانی» (copy label on form pads). */
+export function edgeTab(svg, x, y, w, h, label) {
+  el('rect', { x, y, width: w, height: h, rx: 0.8, fill: FORM_DARK }, svg);
+  printedText(svg, label, x + w / 2, y + h / 2 + 1.05, { size: h * 0.5, weight: 800, color: FORM_PAPER, anchor: 'middle' });
 }

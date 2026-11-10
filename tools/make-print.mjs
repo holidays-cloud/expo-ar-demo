@@ -9,7 +9,7 @@
 //   js/docs/<doc>.layout.js   measured positions of each handwritten piece (mm)
 // Uses the Chromium + Playwright that are installed on the machine.
 import { createServer } from 'node:http';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +19,12 @@ import { createStaticHandler } from './serve.mjs';
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const docs = process.argv.slice(2).length ? process.argv.slice(2) : ['doc1'];
+const docs = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+if (!docs.length) docs.push('doc1', 'doc2', 'doc3', 'doc4');
+// Documents that are filled in by hand get a blank form + a filled example for the writer.
+const HANDWRITTEN = ['doc1', 'doc4']; // add 'doc3' to hand-draw the floor plan later
+// Doc 2 uses a real photo when scans/photo.jpg exists (prepared here with ImageMagick).
+const PHOTO_SRC = join(root, 'scans', 'photo.jpg');
 
 const server = createServer(createStaticHandler(root, { allowTools: true }));
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -27,14 +32,23 @@ const base = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch();
 mkdirSync(join(root, 'print'), { recursive: true });
 mkdirSync(join(root, 'img'), { recursive: true });
+mkdirSync(join(root, 'print', 'templates'), { recursive: true });
+mkdirSync(join(root, 'print', 'assets'), { recursive: true });
+let photoParam = '';
+if (docs.includes('doc2') && existsSync(PHOTO_SRC)) {
+  // Fill the 182 x 200 mm photo area at 300 DPI: auto-orient, centre-crop, gentle auto-level.
+  execFileSync('convert', [PHOTO_SRC, '-auto-orient', '-resize', '2150x2363^', '-gravity', 'center', '-extent', '2150x2363', '-auto-level', '-quality', '90', join(root, 'print', 'assets', 'doc2-photo.jpg')]);
+  photoParam = '&photo=1';
+  console.log('doc2: using the real photo from scans/photo.jpg');
+}
 
 try {
   for (const doc of docs) {
-    const render = async (width, height) => {
+    const render = async (width, height, template = false, readable = false) => {
       const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
       page.on('console', (m) => m.type() === 'error' && console.error('[page]', m.text()));
       page.on('pageerror', (e) => console.error('[page error]', e.message));
-      await page.goto(`${base}/tools/print/render.html?doc=${doc}`);
+      await page.goto(`${base}/tools/print/render.html?doc=${doc}${template ? '&template=1' : ''}${readable ? '&readable=1' : ''}${doc === 'doc2' ? photoParam : ''}`);
       await page.waitForFunction(() => window.__result, null, { timeout: 30000 });
       return page;
     };
@@ -61,6 +75,33 @@ try {
       `// Bounding boxes [x, y, w, h] in mm of each handwritten piece on the printed page.\n` +
       `export const PIECES = {\n${Object.entries(pieces).map(([k, v]) => `  ${k}: [${v.join(", ")}],`).join("\n")}\n};\n`);
     console.log(`${doc}: print/${doc}.png, .pdf, .svg, img/${doc}.jpg, ${Object.keys(pieces).length} pieces measured`);
+
+    if (HANDWRITTEN.includes(doc)) {
+      // Example to copy: the filled version with the handwriting in plain Vazirmatn (easy to read).
+      page = await render(2480, 3508, false, true);
+      await page.screenshot({ path: join(root, 'print', 'templates', `${doc}-example.png`) });
+      await page.emulateMedia({ media: 'print' });
+      await page.pdf({ path: join(root, 'print', 'templates', `${doc}-example.pdf`), width: '210mm', height: '297mm', printBackground: true, pageRanges: '1' });
+      await page.close();
+      writeFileSync(join(root, 'print', 'templates', `${doc}-fields.json`), JSON.stringify(pieces));
+      page = await render(2480, 3508, true);
+      const tmp = join(root, 'print', 'templates', `${doc}.tmp.png`);
+      await page.screenshot({ path: tmp });
+      execFileSync('convert', [tmp, '-units', 'PixelsPerInch', '-density', '300', join(root, 'print', 'templates', `${doc}-blank.png`)]);
+      execFileSync('rm', [tmp]);
+      await page.emulateMedia({ media: 'print' });
+      await page.pdf({ path: join(root, 'print', 'templates', `${doc}-blank.pdf`), width: '210mm', height: '297mm', printBackground: true, pageRanges: '1' });
+      await page.close();
+      console.log(`${doc}: print/templates/${doc}-blank.pdf (to fill in by hand) and ${doc}-example.pdf (what to write)`);
+    }
+  }
+  // One file with the three blank forms (to print and fill in) and one with the examples.
+  const t = (n) => join(root, 'print', 'templates', n);
+  // Always rebuilt from the per-document files, even when only one document was re-rendered.
+  const have = HANDWRITTEN.filter((d) => existsSync(t(`${d}-blank.pdf`)) && existsSync(t(`${d}-example.pdf`)));
+  if (have.length) {
+    execFileSync('pdfunite', [...have.map((d) => t(`${d}-blank.pdf`)), t('1-PRINT-these-blank-forms.pdf')]);
+    execFileSync('pdfunite', [...have.map((d) => t(`${d}-example.pdf`)), t('2-COPY-from-these-examples.pdf')]);
   }
 } finally {
   await browser.close();

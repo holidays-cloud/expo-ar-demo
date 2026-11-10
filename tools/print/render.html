@@ -12,7 +12,11 @@
 <body>
 <script type="module">
   // Used only by tools/make-print.mjs (headless Chromium).
-  const doc = new URLSearchParams(location.search).get('doc');
+  const params = new URLSearchParams(location.search);
+  const doc = params.get('doc');
+  const { MODE } = await import('./lib.js');
+  MODE.template = params.get('template') === '1';
+  MODE.readable = params.get('readable') === '1';
   await Promise.all([document.fonts.load('20px Vazirmatn'), document.fonts.load('700 20px Vazirmatn'), document.fonts.load('20px HandFa'), document.fonts.load('700 20px HandFa')]);
   const { build } = await import(`./${doc}.print.js`);
   const { PAGE } = await import(`../../js/docs/${doc}.data.js`);
@@ -21,7 +25,9 @@
   svg.setAttribute('viewBox', `0 0 ${PAGE.w} ${PAGE.h}`);
   svg.setAttribute('width', `${PAGE.w}mm`); svg.setAttribute('height', `${PAGE.h}mm`);
   document.body.appendChild(svg);
-  build(svg);
+  build(svg, { photo: params.get('photo') });
+  // wait for embedded images (the real photo) before measuring / screenshotting
+  await Promise.all([...svg.querySelectorAll('image')].map((im) => new Promise((r) => { const i = new Image(); i.onload = i.onerror = r; i.src = im.getAttribute('href'); })));
   // Measure every handwritten piece in millimetres (axis-aligned, includes rotation).
   const box = svg.getBoundingClientRect(), k = PAGE.w / box.width, pad = 1.2;
   const pieces = {};

@@ -13,6 +13,11 @@ Plain static site (ES modules, no build step) plus Node scripts in `tools/` that
 ## Print
 `print/doc1.pdf` … `print/doc4.pdf` (vector) or the `.png` files (2480 × 3508 px, 300 DPI) are A4 portrait. They can be printed larger on the banner if the proportions stay the same. Use matte material. Reprint whenever the artwork changes, because the tracking file must match the print.
 
+## Real handwriting and photo
+1. Print `print/templates/1-PRINT-these-blank-forms.pdf` at 100 % (no "fit to page") and fill it in by hand, copying `2-COPY-from-these-examples.pdf`.
+2. Photograph each filled page (whole page in view) and save as `scans/doc1.jpg`, `scans/doc3.jpg`, `scans/doc4.jpg`; your workplace photo as `scans/photo.jpg`.
+3. `pip install opencv-python-headless`, then `npm run print`, `npm run targets`, `npm run inspect`.
+
 ## Rebuild after changing a document
 ```bash
 npm install --ignore-scripts

@@ -4,13 +4,14 @@
 
 export const PAGE = { w: 210, h: 297 };
 
+// code: the supplier's item code (printed on the invoice)
 export const ITEMS = [
-  { id: 'pallet', name: 'پالت چوبی', unit: 'عدد', qty: 10, price: 450000 },
-  { id: 'carton', name: 'کارتن بسته‌بندی بزرگ', unit: 'عدد', qty: 40, price: 28000 },
-  { id: 'tape', name: 'نوار چسب پهن', unit: 'حلقه', qty: 24, price: 65000 },
-  { id: 'stretch', name: 'فیلم استرچ', unit: 'رول', qty: 6, price: 380000 },
-  { id: 'gloves', name: 'دستکش کار', unit: 'جعبه', qty: 3, price: 240000 },
-  { id: 'labels', name: 'برچسب بارکد', unit: 'بسته', qty: 5, price: 150000 },
+  { id: 'pallet', code: '۱۰۴۲', name: 'پالت چوبی', unit: 'عدد', qty: 10, price: 450000 },
+  { id: 'carton', code: '۲۲۱۵', name: 'کارتن بسته‌بندی بزرگ', unit: 'عدد', qty: 40, price: 28000 },
+  { id: 'tape', code: '۳۰۷۱', name: 'نوار چسب پهن', unit: 'حلقه', qty: 24, price: 65000 },
+  { id: 'stretch', code: '۳۰۸۸', name: 'فیلم استرچ', unit: 'رول', qty: 6, price: 380000 },
+  { id: 'gloves', code: '۴۴۱۰', name: 'دستکش کار', unit: 'جعبه', qty: 3, price: 240000 },
+  { id: 'labels', code: '۵۱۲۶', name: 'برچسب بارکد', unit: 'بسته', qty: 5, price: 150000 },
 ];
 export const TOTAL = ITEMS.reduce((s, i) => s + i.qty * i.price, 0); // 10,930,000
 
@@ -21,9 +22,9 @@ export const MISMATCH = 'carton';
 
 // ---- paper geometry (mm) ---------------------------------------------------------
 export const INVOICE = {
-  x1: 18, x2: 194,
-  headerY: 50, rowH: 9, // table header row 50..58, rows from 58
-  cols: { n: [184, 194], name: [130, 184], qty: [112, 130], unit: [96, 112], price: [64, 96], sum: [18, 64] },
+  x1: 16, x2: 194,
+  headerY: 59, rowH: 9, // table header row 59..67, rows from 67
+  cols: { n: [185, 194], code: [170, 185], name: [120, 170], qty: [104, 120], unit: [90, 104], price: [58, 90], sum: [16, 58] },
 };
 export const SLIP = {
   x: 24, y: 160, w: 162, h: 120,
@@ -48,5 +49,6 @@ export const RESULT = {
   received: '۳۶ عدد',
   diff: '۴ عدد کمتر تحویل شده',
   amount: '۱۱۲٬۰۰۰ تومان', // 4 × 28,000
-  next: 'پیش از پرداخت، با تأمین‌کننده هماهنگ شود.',
+  slipNote: 'روی رسید انبار نوشته شده «یک بسته جدا میاد»؛ یعنی ظاهراً بقیهٔ کارتن‌ها جداگانه می‌رسد.',
+  next: 'تا رسیدن بقیهٔ کارتن‌ها، پرداخت این ردیف نگه داشته شود و با تأمین‌کننده هماهنگ شود.',
 };

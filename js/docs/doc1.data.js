@@ -15,21 +15,26 @@
 
 export const PAGE = { w: 210, h: 297 };
 
-// Shift table geometry on the PAPER (hand-drawn grid).
-export const PAPER_GRID = {
-  x1: 18, x2: 192, labelW: 24, // label column is on the right (RTL)
-  rows: [156, 167, 186, 206], // header | morning | evening
+// ---- Paper layout of the official form (mm) ----------------------------------------
+// Order table: 8 rows under a header row; columns right to left (RTL).
+export const ORDER_TABLE = {
+  top: 61, rowH: 9, rows: 8,
+  cols: { n: [186, 196], item: [124, 186], qty: [88, 124], note: [16, 88] },
 };
-const dayCol = (k) => { // k = 0 (Saturday, rightmost) .. 5 (Thursday)
+const rowBase = (i) => ORDER_TABLE.top + i * ORDER_TABLE.rowH + 6.6; // baseline of row i
+
+// Shift table geometry on the paper (days and row labels are printed; names handwritten).
+export const PAPER_GRID = {
+  x1: 16, x2: 196, labelW: 24, // label column is on the right (RTL)
+  rows: [157, 166, 184, 202], // header | morning | evening
+};
+export const dayCol = (k) => { // k = 0 (Saturday, rightmost) .. 5 (Thursday)
   const w = (PAPER_GRID.x2 - PAPER_GRID.labelW - PAPER_GRID.x1) / 6;
   const right = PAPER_GRID.x2 - PAPER_GRID.labelW - w * k;
   return { cx: right - w / 2, x1: right - w, x2: right };
 };
-const labelCx = PAPER_GRID.x2 - PAPER_GRID.labelW / 2;
 
 export const DAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه'];
-// Handwriting has no zero-width non-joiner, so the paper spells these with a space.
-const DAYS_HAND = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه شنبه', 'چهارشنبه', 'پنجشنبه'];
 export const SHIFT_NAMES = {
   morning: ['سارا', 'رضا', 'سارا', 'رضا', 'مینا', 'امید'],
   evening: ['امید', 'مینا', 'نگار', 'کاوه', 'نگار', 'کاوه'],
@@ -41,44 +46,44 @@ export const CONFLICT = { row: 'morning', day: 3 };
 const BLUE = '#1f3b8c';
 const RED = '#a5281f';
 
-// Handwritten pieces. Each piece is drawn on paper and, in the animation,
-// lifts off and flies to the clean-layout rect named in `to`.
+const C = ORDER_TABLE.cols;
+const ITEM_X = C.item[1] - 2, QTY_X = (C.qty[0] + C.qty[1]) / 2, NOTE_X = C.note[1] - 3;
+
+// Handwritten pieces. Each piece is written on the form and, in the animation, lifts off
+// and flies to the clean-layout rect named in `to`.
 //   x: start of the line (right edge, RTL) or centre when align:'middle'
 //   y: baseline
-//   segs: pieces of text written one after another (right to left)
+//   segs: text written right to left; seg.x jumps to a table column
 //         strike: crossed out, circle: circled, underline: underlined twice
 export const HAND = [
-  // header fields
-  { id: 'h_no', x: 44, y: 23, size: 5.2, rot: -1.5, ink: BLUE, segs: [{ t: '۰۴۷' }], to: 'meta' },
-  { id: 'h_date', x: 46, y: 33.5, size: 5.2, rot: 1, ink: BLUE, segs: [{ t: '۱۹ آبان' }], to: 'meta' },
+  // header fields (left box of the form header)
+  { id: 'h_no', x: 47, y: 21.5, size: 5.2, rot: -1.5, ink: BLUE, segs: [{ t: '۰۴۷' }], to: 'meta' },
+  { id: 'h_date', x: 48, y: 30, size: 5.2, rot: 1, ink: BLUE, segs: [{ t: '۱۹ آبان' }], to: 'meta' },
 
-  // order lines (baselines sit on the ruled lines)
-  { id: 'o1', x: 181, y: 60, size: 6, rot: -0.6, ink: BLUE, segs: [{ t: 'کارتن بسته بندی بزرگ' }, { t: '۱۲ عدد' }], to: 'r1' },
-  { id: 'o2', x: 179, y: 70, size: 6, rot: 0.8, ink: BLUE, segs: [{ t: 'نوار چسب پهن' }, { t: 'ــ ۲۴ حلقه' }], to: 'r2' },
-  { id: 'o3', x: 182, y: 80, size: 6, rot: -1.2, ink: BLUE, segs: [{ t: 'دستکش کار (سایز بزرگ)' }, { t: '۳ جعبه' }], to: 'r3' },
-  { id: 'o4', x: 180, y: 90, size: 6, rot: 0.4, ink: BLUE, segs: [{ t: 'برچسب قیمت' }, { t: '۵ بسته', strike: true }, { t: '←' }, { t: '۸ بسته', circle: true }], to: 'r4' },
-  { id: 'o5', x: 178, y: 100, size: 6, rot: -0.3, ink: BLUE, segs: [{ t: 'کاغذ تحریر' }, { t: '۱۰ بند' }], to: 'r5' },
-  { id: 'o6', x: 181, y: 110, size: 6, rot: 1.1, ink: BLUE, segs: [{ t: 'ماژیک آبی و مشکی' }, { t: '۲ جعبه' }], to: 'r6' },
-  { id: 'o7', x: 180, y: 120, size: 6, rot: -0.9, ink: BLUE, segs: [{ t: 'تونر پرینتر ۱ عدد' }, { t: 'فوری!', underline: true }], to: 'r7' },
-  { id: 'o8', x: 128, y: 133, size: 5, rot: -4, ink: BLUE, segs: [{ t: 'سفارش قبل از ظهر ارسال شه' }], to: 'onote' },
+  // order table rows: item | quantity | remarks
+  { id: 'o1', x: ITEM_X, y: rowBase(0), size: 5.6, rot: -0.6, ink: BLUE, segs: [{ t: 'کارتن بسته بندی بزرگ' }, { t: '۱۲ عدد', x: QTY_X, align: 'middle' }], to: 'r1' },
+  { id: 'o2', x: ITEM_X, y: rowBase(1), size: 5.6, rot: 0.6, ink: BLUE, segs: [{ t: 'نوار چسب پهن' }, { t: '۲۴ حلقه', x: QTY_X, align: 'middle' }], to: 'r2' },
+  { id: 'o3', x: ITEM_X, y: rowBase(2), size: 5.6, rot: -1, ink: BLUE, segs: [{ t: 'دستکش کار (سایز بزرگ)' }, { t: '۳ جعبه', x: QTY_X, align: 'middle' }], to: 'r3' },
+  { id: 'o4', x: ITEM_X, y: rowBase(3), size: 5.6, rot: 0.4, ink: BLUE, segs: [{ t: 'برچسب قیمت' }, { t: '۵ بسته', x: QTY_X, align: 'middle', strike: true }, { t: '۸ بسته', x: NOTE_X, circle: true }, { t: 'اصلاح شد' }], to: 'r4' },
+  { id: 'o5', x: ITEM_X, y: rowBase(4), size: 5.6, rot: -0.3, ink: BLUE, segs: [{ t: 'کاغذ تحریر' }, { t: '۱۰ بند', x: QTY_X, align: 'middle' }], to: 'r5' },
+  { id: 'o6', x: ITEM_X, y: rowBase(5), size: 5.6, rot: 0.9, ink: BLUE, segs: [{ t: 'ماژیک آبی و مشکی' }, { t: '۲ جعبه', x: QTY_X, align: 'middle' }], to: 'r6' },
+  { id: 'o7', x: ITEM_X, y: rowBase(6), size: 5.6, rot: -0.8, ink: BLUE, segs: [{ t: 'تونر پرینتر' }, { t: '۱ عدد', x: QTY_X, align: 'middle' }, { t: 'فوری!', x: NOTE_X, underline: true }], to: 'r7' },
+  { id: 'o8', x: 176, y: 140.5, size: 5, rot: -1.5, ink: BLUE, segs: [{ t: 'سفارش قبل از ظهر ارسال شه' }], to: 'onote' },
 
-  // shift table: day headers, row labels, names
-  ...DAYS_HAND.map((d, k) => ({ id: 'd' + k, x: dayCol(k).cx, y: 164, size: 4.4, rot: [-2, 1, -1, 2, -1.5, 1][k], ink: BLUE, align: 'middle', segs: [{ t: d }], to: 'hd' + k })),
-  { id: 'l_m', x: labelCx, y: 179, size: 5.4, rot: -2, ink: BLUE, align: 'middle', segs: [{ t: 'صبح' }], to: 'hl_m' },
-  { id: 'l_e', x: labelCx, y: 198.5, size: 5.4, rot: 1.5, ink: BLUE, align: 'middle', segs: [{ t: 'عصر' }], to: 'hl_e' },
-  ...SHIFT_NAMES.morning.map((n, k) => ({ id: 'cm' + k, x: dayCol(k).cx + [1, -1.5, 2, 0, -1, 1.5][k], y: 179 + [0.5, -0.5, 1, 0, -1, 0.5][k], size: 5.6, rot: [-3, 2, -1, 3, -2, 1][k], ink: BLUE, align: 'middle', segs: [{ t: n }], to: 'cm' + k })),
-  ...SHIFT_NAMES.evening.map((n, k) => ({ id: 'ce' + k, x: dayCol(k).cx + [-1, 1.5, -2, 1, 0, -1][k], y: 198 + [-0.5, 1, 0, -1, 0.5, 0][k], size: 5.6, rot: [2, -2, 1, -3, 2, -1][k], ink: BLUE, align: 'middle', segs: [{ t: n + (k === 5 ? '؟' : '') }], to: 'ce' + k })),
+  // shift names
+  ...SHIFT_NAMES.morning.map((n, k) => ({ id: 'cm' + k, x: dayCol(k).cx + [1, -1.5, 2, 0, -1, 1.5][k], y: 177.5 + [0.5, -0.5, 1, 0, -1, 0.5][k], size: 5.6, rot: [-3, 2, -1, 3, -2, 1][k], ink: BLUE, align: 'middle', segs: [{ t: n }], to: 'cm' + k })),
+  ...SHIFT_NAMES.evening.map((n, k) => ({ id: 'ce' + k, x: dayCol(k).cx + [-1, 1.5, -2, 1, 0, -1][k], y: 195.5 + [-0.5, 1, 0, -1, 0.5, 0][k], size: 5.6, rot: [2, -2, 1, -3, 2, -1][k], ink: BLUE, align: 'middle', segs: [{ t: n + (k === 5 ? '؟' : '') }], to: 'ce' + k })),
 
-  // the manager's red note under the table (source of the conflict)
-  { id: 'leave', x: 150, y: 218, size: 5.8, rot: -3, ink: RED, segs: [{ t: 'رضا سه شنبه مرخصیه!', underline: true }], to: 'callout' },
+  // the supervisor's red note (source of the conflict)
+  { id: 'leave', x: 163, y: 213.5, size: 5.8, rot: -2, ink: RED, segs: [{ t: 'رضا سه شنبه مرخصیه!', underline: true }], to: 'callout' },
 
-  // notes section
-  { id: 'n1', x: 180, y: 244, size: 5.6, rot: -0.7, ink: BLUE, segs: [{ t: 'تحویل بار: چهارشنبه صبح، درب پشتی' }], to: 'n1' },
-  { id: 'n2', x: 176, y: 254.5, size: 5.6, rot: 1.2, ink: BLUE, segs: [{ t: 'فاکتور قبلی هنوز نیومده' }], to: 'n2' },
+  // further notes
+  { id: 'n1', x: 178, y: 237, size: 5.4, rot: -0.7, ink: BLUE, segs: [{ t: 'تحویل بار: چهارشنبه صبح، درب پشتی' }], to: 'n1' },
+  { id: 'n2', x: 176, y: 247, size: 5.4, rot: 1, ink: BLUE, segs: [{ t: 'فاکتور قبلی هنوز نیومده' }], to: 'n2' },
 ];
 
-// Where the arrow from the red note points (Tuesday column, bottom of grid).
-export const LEAVE_ARROW = { from: [94, 214], to: [dayCol(CONFLICT.day).x2 - 4, 182.5] };
+// Where the supervisor's arrow points (Tuesday morning cell).
+export const LEAVE_ARROW = { from: [118, 211], to: [dayCol(CONFLICT.day).x2 - 4, 181] };
 
 // ---------------------------------------------------------------------------
 // The CLEAN layout that locks over the page at the end of the animation.
