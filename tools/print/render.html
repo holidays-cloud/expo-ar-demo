@@ -1,0 +1,35 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  @font-face { font-family: 'Vazirmatn'; src: url('/fonts/Vazirmatn-wght.woff2') format('woff2'); font-weight: 100 900; }
+  @font-face { font-family: 'HandFa'; src: url('/fonts/ArefRuqaa-Regular.woff2') format('woff2'); font-weight: 400; }
+  @font-face { font-family: 'HandFa'; src: url('/fonts/ArefRuqaa-Bold.woff2') format('woff2'); font-weight: 700; }
+  html, body { margin: 0; padding: 0; background: #fff; }
+  svg { display: block; width: 100vw; height: auto; }
+  @page { size: 210mm 297mm; margin: 0; }
+  @media print { svg { width: 210mm; height: 297mm; } }
+</style></head>
+<body>
+<script type="module">
+  // Used only by tools/make-print.mjs (headless Chromium).
+  const doc = new URLSearchParams(location.search).get('doc');
+  await Promise.all([document.fonts.load('20px Vazirmatn'), document.fonts.load('700 20px Vazirmatn'), document.fonts.load('20px HandFa'), document.fonts.load('700 20px HandFa')]);
+  const { build } = await import(`./${doc}.print.js`);
+  const { PAGE } = await import(`../../js/docs/${doc}.data.js`);
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  svg.setAttribute('viewBox', `0 0 ${PAGE.w} ${PAGE.h}`);
+  svg.setAttribute('width', `${PAGE.w}mm`); svg.setAttribute('height', `${PAGE.h}mm`);
+  document.body.appendChild(svg);
+  build(svg);
+  // Measure every handwritten piece in millimetres (axis-aligned, includes rotation).
+  const box = svg.getBoundingClientRect(), k = PAGE.w / box.width, pad = 1.2;
+  const pieces = {};
+  svg.querySelectorAll('[data-piece]').forEach((g) => {
+    const r = g.getBoundingClientRect();
+    const x = (r.left - box.left) * k - pad, y = (r.top - box.top) * k - pad;
+    pieces[g.dataset.piece] = [x, y, r.width * k + 2 * pad, r.height * k + 2 * pad].map((n) => Math.round(n * 100) / 100);
+  });
+  window.__result = { pieces, svg: svg.outerHTML };
+</script>
+</body></html>
