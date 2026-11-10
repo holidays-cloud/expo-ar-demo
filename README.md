@@ -1,40 +1,19 @@
 # Expo AR demo
 
-Plain static site (ES modules, no build step) plus a few Node scripts in `tools/` that produce the print files and AR targets. The full spec is in `CLAUDE.md`.
+Plain static site (ES modules, no build step) plus Node scripts in `tools/` that produce the print files and the tracking file. The full spec and the later decisions are in `CLAUDE.md`.
 
-## Run locally
+## What the visitor sees
+1. Intro: title, one line, a button that opens the camera.
+2. One camera screen. Pointing at any of the four banner documents plays its animation on the paper. Four dots at the top fill in as documents are done; a filled dot reopens that result.
+3. After an animation, a "دیدن نتیجه" button opens the result card, which always says it is a demonstration prepared in advance. "اسکن برگهٔ بعدی" returns to the camera.
+4. If the camera is denied or unavailable: one plain screen with how to allow it, what to do inside Telegram/Instagram, and "ask our staff".
 
-```bash
-npm run serve
-```
-
-This serves the project on port 8080. On a laptop browser, `http://localhost:8080` works fully, camera included, because `localhost` counts as a secure origin.
-
-## Test on a phone (the camera needs HTTPS)
-
-Pick one:
-
-**A. Your VPS with a real certificate (closest to the expo).** Copy the site files (everything except `node_modules/`, `tools/`, `print/`) to the server and serve them with nginx. Get a certificate from Let's Encrypt (`apt install nginx certbot python3-certbot-nginx`, then `certbot --nginx -d your.domain`) or install the Parspack certificate. Full deployment notes come in step 7.
-
-**B. Android phone over USB, no certificate.** Run `npm run serve` on the laptop, connect the phone with USB debugging on, open `chrome://inspect` on the laptop, and enable *Port forwarding* `8080 → localhost:8080`. Then open `http://localhost:8080` in Chrome on the phone. The phone treats it as localhost, so the camera is allowed.
-
-**C. Same Wi-Fi with a self-signed certificate.**
-```bash
-openssl req -x509 -newkey rsa:2048 -nodes -days 30 -keyout key.pem -out cert.pem -subj "/CN=expo-test"
-```
-```bash
-node tools/serve.mjs --port 8443 --cert cert.pem --key key.pem
-```
-Open `https://<laptop-ip>:8443` on the phone and accept the warning. Android Chrome allows the camera after that. iPhone Safari usually does too; if it doesn't, use option A.
-
-Over plain `http://<laptop-ip>:8080` everything except the camera works: the still-image mode and the sample results.
+**Booth staff only:** tap the logo 5 times within 3 seconds to open the sample results (no scanning needed).
 
 ## Print
-
-`print/doc1.pdf` (vector) or `print/doc1.png` (2480 × 3508 px, 300 DPI) is A4 portrait. It can be printed larger on the banner as long as the proportions stay the same (MindAR doesn't care about size). Use matte material, since gloss reflections break tracking.
+`print/doc1.pdf` … `print/doc4.pdf` (vector) or the `.png` files (2480 × 3508 px, 300 DPI) are A4 portrait. They can be printed larger on the banner if the proportions stay the same. Use matte material. Reprint whenever the artwork changes, because the tracking file must match the print.
 
 ## Rebuild after changing a document
-
 ```bash
 npm install --ignore-scripts
 ```
@@ -48,7 +27,12 @@ npm run print
 npm run targets
 ```
 ```bash
-node tools/inspect-target.mjs targets/doc1.mind
+npm run inspect
 ```
+`inspect` must show at least 25 points on "keyframe 1" for every document.
 
-`print` regenerates the print files, the web image and the measured positions of the handwritten pieces. `targets` recompiles the MindAR target. Reprint the banner whenever the artwork changes, because the old print will no longer match the target.
+## Test on a phone
+Upload everything except `node_modules/` and `tools/build/` to GitHub Pages (or any HTTPS host). See the step-by-step guide given in the chat, or `npm run serve` for local testing (camera works on `localhost`).
+
+## Steadiness
+See the "Steadiness settings" block at the top of `js/ar.js`; each value has a comment explaining its trade-off.

@@ -18,7 +18,11 @@ const css3d = readFileSync(nm('three/examples/jsm/renderers/CSS3DRenderer.js'), 
   .replace(/from\s*'three'/g, "from '../../three.module.min.js'");
 writeFileSync(out('vendor/three/addons/renderers/CSS3DRenderer.js'), css3d);
 
-// MindAR image tracking (three.js flavour) and its chunks
+// MindAR image tracking (three.js flavour) and its chunks.
+// TRACKING_KEYFRAME: MindAR follows the page on a reduced copy of the target:
+//   1 = 128 px wide (MindAR default), 0 = 256 px wide (finer: less jitter, a little more GPU work).
+// Chosen by measurement, see CLAUDE.md "Steadiness".
+const TRACKING_KEYFRAME = Number(process.env.TRACKING_KEYFRAME ?? 0);
 const mindFiles = ['mindar-image-three.prod.js', 'controller-mGt1s8dJ.js', 'ui-fBadYuor.js'];
 for (const f of mindFiles) {
   let src = readFileSync(nm('mind-ar/dist/' + f), 'utf8');
@@ -26,6 +30,11 @@ for (const f of mindFiles) {
     .replace(/from\s*"three\/addons\/renderers\/CSS3DRenderer\.js"/g, 'from "../three/addons/renderers/CSS3DRenderer.js"')
     .replace(/from\s*"three"/g, 'from "../three/three.module.min.js"');
   if (/from\s*"three/.test(src)) throw new Error('Unpatched three import left in ' + f);
+  if (f.startsWith('controller')) {
+    const before = src;
+    src = src.replace(/U5 = 0\.8, Y5 = \d,/, `U5 = 0.8, Y5 = ${TRACKING_KEYFRAME},`);
+    if (src === before && TRACKING_KEYFRAME !== 1) throw new Error('Could not set the tracking keyframe (MindAR build changed?)');
+  }
   writeFileSync(out('vendor/mindar/' + f), src);
 }
 copyFileSync(nm('mind-ar/LICENSE'), out('vendor/mindar/LICENSE'));

@@ -1,9 +1,11 @@
-// The five banner documents. `load` is a dynamic import so nothing heavy is
-// downloaded until the visitor taps a tile.
-export const DOCS = [
-  { id: 'doc1', load: () => import('./doc1.js') },
-  { id: 'doc2', load: null }, // step 3
-  { id: 'doc3', load: null }, // step 3
-  { id: 'doc4', load: null }, // step 3
-  { id: 'doc5', load: null }, // step 3
-];
+// The four banner documents, in the same order as inside targets/banner.mind.
+// `load` is a dynamic import so a document's code is fetched only when needed.
+import { TARGET_ORDER } from './targets.js';
+
+const loaders = {
+  doc1: () => import('./doc1.js'),
+  doc2: () => import('./doc2.js'),
+  doc3: () => import('./doc3.js'),
+  doc4: () => import('./doc4.js'),
+};
+export const DOCS = TARGET_ORDER.map((id, targetIndex) => ({ id, targetIndex, load: loaders[id] }));

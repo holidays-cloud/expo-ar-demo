@@ -115,3 +115,41 @@ export function printedText(parent, text, x, y, { size = 4, weight = 400, color 
   t.textContent = text;
   return t;
 }
+
+// Bold corner marks. Each document uses a different combination so the four pages never
+// share their strongest features. kinds = [topLeft, topRight, bottomLeft, bottomRight].
+export function cornerMarks(svg, W, H, kinds, color = '#232c3d', paper = '#fbf8f1') {
+  const S = 14, m = 3;
+  const spots = [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]];
+  kinds.forEach((kind, i) => {
+    const [x, y, sx, sy] = spots[i];
+    const cx = x + sx * S / 2, cy = y + sy * S / 2;
+    const g = el('g', {}, svg);
+    if (kind === 'L') el('path', { d: `M${x} ${y} h${sx * S} v${sy * 4} h${-sx * (S - 4)} v${sy * (S - 4)} h${-sx * 4} Z`, fill: color }, g);
+    else if (kind === 'tri') el('path', { d: `M${x} ${y} h${sx * S} L${x} ${y + sy * S} Z`, fill: color }, g);
+    else if (kind === 'dot') { el('circle', { cx, cy, r: 6.5, fill: color }, g); el('circle', { cx, cy, r: 2.4, fill: paper }, g); }
+    else if (kind === 'notch') { el('rect', { x: Math.min(x, x + sx * S), y: Math.min(y, y + sy * S), width: S, height: S, fill: color }, g); el('rect', { x: Math.min(x, x + sx * 6), y: Math.min(y, y + sy * 6), width: 6, height: 6, fill: paper }, g); }
+    else if (kind === 'plus') el('path', { d: `M${cx - 2.2} ${cy - 7} h4.4 v4.8 h4.8 v4.4 h-4.8 v4.8 h-4.4 v-4.8 h-4.8 v-4.4 h4.8 Z`, fill: color }, g);
+    else if (kind === 'ring') el('circle', { cx, cy, r: 5.6, fill: 'none', stroke: color, 'stroke-width': 2.6 }, g);
+    else if (kind === 'diamond') el('path', { d: `M${cx} ${cy - 7} L${cx + 7} ${cy} L${cx} ${cy + 7} L${cx - 7} ${cy} Z`, fill: color }, g);
+    else if (kind === 'bars') [0, 1, 2].forEach((k) => el('rect', { x: Math.min(x, x + sx * S), y: Math.min(y, y + sy * S) + k * 5, width: S - k * 4, height: 3.2, fill: color, transform: sx < 0 ? `translate(${k * 4} 0)` : undefined }, g));
+    else if (kind === 'half') el('path', { d: `M${cx - 7} ${cy} A7 7 0 0 1 ${cx + 7} ${cy} Z`, fill: color, transform: `rotate(${sy < 0 ? 180 : 0} ${cx} ${cy})` }, g);
+  });
+}
+
+/** Persian digits + thousands separator for printed numbers. */
+export const fa = (v) => String(v).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+export const faMoney = (n) => fa(n.toLocaleString('en-US').replace(/,/g, '٬'));
+
+/** A QR-code-like block (random modules + three finder squares). Purely decorative,
+ *  encodes nothing; gives very distinctive features for tracking. */
+export function qrBlock(svg, x, y, size, R, color = '#1e2a36', paper = '#fbfaf6') {
+  const n = 21, c = size / n;
+  el('rect', { x, y, width: size, height: size, fill: paper }, svg);
+  const finder = (fx, fy) => { el('rect', { x: x + fx * c, y: y + fy * c, width: 7 * c, height: 7 * c, fill: color }, svg); el('rect', { x: x + (fx + 1) * c, y: y + (fy + 1) * c, width: 5 * c, height: 5 * c, fill: paper }, svg); el('rect', { x: x + (fx + 2) * c, y: y + (fy + 2) * c, width: 3 * c, height: 3 * c, fill: color }, svg); };
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const inFinder = (i < 8 && j < 8) || (i > n - 9 && j < 8) || (i < 8 && j > n - 9);
+    if (!inFinder && R() < 0.48) el('rect', { x: r2(x + i * c), y: r2(y + j * c), width: r2(c + 0.02), height: r2(c + 0.02), fill: color }, svg);
+  }
+  finder(0, 0); finder(n - 7, 0); finder(0, n - 7);
+}

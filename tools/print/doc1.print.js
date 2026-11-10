@@ -21,6 +21,8 @@ export function build(svg) {
   el('rect', { x: 0, y: 0, width: W, height: H, fill: PAPER }, svg);
   border(svg, W, H, R);
   cornerMarks(svg);
+  // two punched binder holes
+  [96, 196].forEach((y) => { el('circle', { cx: 14, cy: y, r: 3.2, fill: '#3a3f4a' }, svg); el('circle', { cx: 14, cy: y, r: 3.2, fill: 'none', stroke: '#c9c3b5', 'stroke-width': 0.6 }, svg); });
 
   // ---- Printed form header: dark band with the (fictional) business emblem -------
   el('rect', { x: 72, y: 13, width: 124, height: 26, rx: 2.2, fill: DARK }, svg);
@@ -30,7 +32,7 @@ export function build(svg) {
   el('polygon', { points: hex(6.2), fill: PAPER }, em);
   [-2.4, 0, 2.4].forEach((y, i) => el('rect', { x: -3.4 + i * 0.6, y: y - 0.55, width: 6.8 - i * 1.6, height: 1.1, fill: DARK }, em));
   printedText(svg, 'برگ سفارش و برنامهٔ شیفت هفتگی', 170, 25.5, { size: 6, weight: 800, color: PAPER });
-  printedText(svg, 'ORDER SHEET  ·  WEEKLY SHIFT PLAN', 170, 33, { size: 3, weight: 500, color: '#b9c0cc', rtl: false, anchor: 'end', spacing: 0.35 });
+  printedText(svg, 'فرم داخلی انبار و پرسنل  ·  نسخهٔ ۲', 170, 33, { size: 3.1, weight: 500, color: '#b9c0cc' });
   // form fields
   printedText(svg, 'شماره:', 64, 23, { size: 3.6, weight: 600, color: '#4a5060' });
   printedText(svg, 'تاریخ:', 64, 33.5, { size: 3.6, weight: 600, color: '#4a5060' });
@@ -38,7 +40,7 @@ export function build(svg) {
   el('line', { x1: 14, x2: 196, y1: 42, y2: 42, stroke: DARK, 'stroke-width': 0.9 }, svg);
 
   // ---- Section A: order items (ruled lines) --------------------------------
-  sectionTab(svg, 'اقلام سفارش', 'ITEMS', 49.5);
+  sectionTab(svg, 'اقلام سفارش', 'بخش ۱', 49.5);
   for (let y = 60; y <= 140; y += 10) el('line', { x1: 15, x2: 195, y1: y + 0.8, y2: y + 0.8, stroke: '#94abd2', 'stroke-width': 0.25 }, svg);
   el('line', { x1: 185, x2: 185, y1: 53, y2: 142, stroke: '#cf7f7f', 'stroke-width': 0.4 }, svg);
   for (let i = 0; i < 8; i++) printedText(svg, '۱۲۳۴۵۶۷۸'[i], 191, 60 + i * 10, { size: 2.8, weight: 600, color: '#7d8494', anchor: 'middle' });
@@ -64,7 +66,7 @@ export function build(svg) {
   stroke(note, [[56, 101.5], [27, 101]], R, { color: '#1d2333', width: 0.5, amp: 0.2 });
 
   // ---- Section B: shift table (hand-drawn grid) ---------------------------
-  sectionTab(svg, 'برنامهٔ شیفت', 'SHIFTS', 149.5);
+  sectionTab(svg, 'برنامهٔ شیفت', 'بخش ۲', 149.5);
   const G = PAPER_GRID, pen = { color: '#1d2230', width: 0.85, amp: 0.3 };
   // pencil shading on the header row and label column
   el('rect', { x: G.x1, y: G.rows[0], width: G.x2 - G.x1, height: G.rows[1] - G.rows[0], fill: '#1d2230', opacity: 0.09 }, svg);
@@ -83,7 +85,7 @@ export function build(svg) {
   stroke(svg, [[bx - 2.6, by + 3.4], [bx, by], [bx + 3, by + 2.8]], R, red);
 
   // ---- Section C: notes ----------------------------------------------------
-  sectionTab(svg, 'یادداشت', 'NOTES', 230.5);
+  sectionTab(svg, 'یادداشت', 'بخش ۳', 230.5);
   for (let y = 244; y <= 274; y += 10.5) el('line', { x1: 15, x2: 195, y1: y + 0.8, y2: y + 0.8, stroke: '#94abd2', 'stroke-width': 0.25 }, svg);
 
   // coffee-cup ring
@@ -111,18 +113,18 @@ export function build(svg) {
   // ---- Printed footer ------------------------------------------------------
   printedText(svg, 'نمونهٔ نمایشی — همهٔ نام‌ها و ارقام ساختگی است', 189, 282.6, { size: 2.7, color: '#5b6272' });
   el('rect', { x: 20, y: 278.4, width: 17, height: 5.8, rx: 0.8, fill: DARK }, svg);
-  printedText(svg, 'DOC 01', 28.5, 282.6, { size: 3, weight: 800, color: PAPER, rtl: false, anchor: 'middle', spacing: 0.3 });
+  printedText(svg, 'فرم ۱۲', 28.5, 282.8, { size: 3.2, weight: 800, color: PAPER, anchor: 'middle' });
   let bx2 = 40; // barcode-like strip: varied widths
   while (bx2 < 75) { const w = 0.35 + Math.floor(R() * 4) * 0.45; el('rect', { x: r2(bx2), y: 278.4, width: r2(w), height: 5.8, fill: DARK }, svg); bx2 += w + 0.4 + R() * 0.9; }
 }
 
 // Dark tab behind each section title; the English word sits beside it.
-function sectionTab(svg, fa, en, y) {
+function sectionTab(svg, fa, en, y) { // `en` is now a small Farsi section number
   const t = printedText(svg, fa, 192, y, { size: 4.2, weight: 800, color: PAPER });
   const w = t.getComputedTextLength();
   const tab = el('rect', { x: r2(192 - w - 3), y: y - 4.6, width: r2(w + 6), height: 6.6, rx: 1, fill: DARK }, svg);
   svg.insertBefore(tab, t);
-  printedText(svg, en, 192 - w - 6, y - 0.2, { size: 2.7, weight: 700, color: '#5b6272', rtl: false, anchor: 'end', spacing: 0.4 });
+  printedText(svg, en, 192 - w - 6, y - 0.2, { size: 2.9, weight: 700, color: '#5b6272' });
 }
 
 // Four different bold corner marks: big, unique shapes at the page extremes keep the

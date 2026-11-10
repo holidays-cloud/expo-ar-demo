@@ -1,10 +1,9 @@
-// ALL visible UI text lives here, so wording can change without touching logic.
-// Farsi is primary; `en` lines are the optional secondary English line.
-// Use {brand} where the Farsi brand name should appear (filled from config.js).
+// ALL visitor-facing text lives here, in Farsi only (no English words).
+// Use {brand} where the brand name should appear (filled from config.js).
 //
 // Honesty rule: the banner documents are fixed and their results are prepared in
 // advance. Never write that anything is "analysed", "read", "extracted" or processed
-// live. Use: reorganized / assigned / mapped / marked.
+// live. Use: reorganized / assigned / mapped / marked. No percentages, no savings claims.
 //
 // The text printed ON the documents is part of the artwork and lives in
 // js/docs/docN.data.js (changing it requires re-printing).
@@ -13,79 +12,61 @@ export const S = {
   appTitle: 'از پراکندگی تا نظم',
 
   intro: {
-    kicker: '{brand}',
     title: 'از پراکندگی تا نظم',
-    titleEn: 'From scattered to ordered',
-    body: 'دوربین گوشی را روی برگه‌های این بنر بگیرید و ببینید یک کار روزمرهٔ کسب‌وکار چطور مرتب و سازمان‌دهی می‌شود.',
-    start: 'شروع',
-    fine: 'بدون نصب برنامه و بدون ثبت‌نام',
+    body: 'دوربین گوشی را روی یکی از برگه‌های این بنر بگیرید.',
+    start: 'باز کردن دوربین',
+    fine: 'تصویر دوربین فقط روی گوشی شما می‌ماند و جایی ذخیره یا ارسال نمی‌شود.',
   },
 
-  tiles: {
-    title: 'برگه‌های روی بنر',
-    titleEn: 'The documents on the banner',
-    progress: '{done} از {total} برگه',
-    soon: 'به‌زودی',
-    done: 'انجام شد',
-    back: 'بازگشت',
-  },
-
-  docs: {
-    doc1: { title: 'برگهٔ سفارش و شیفت دست‌نویس', en: 'Handwritten order & shift sheet' },
-    doc2: { title: 'عکس محیط کار', en: 'Workspace photo' },
-    doc3: { title: 'نقشهٔ طبقه', en: 'Floor plan' },
-    doc4: { title: 'حواله و فاکتور', en: 'Delivery slip & invoice' },
-    doc5: { title: 'کارت ویزیت ما', en: 'Our business card' },
-  },
-
-  sheet: {
-    camera: 'روی برگهٔ بنر با دوربین',
-    cameraHint: 'انیمیشن روی برگهٔ چاپی نمایش داده می‌شود',
-    still: 'پخش روی تصویر برگه',
-    stillHint: 'بدون دوربین',
-    sample: 'دیدن نمونهٔ نتیجه',
-    cancel: 'بستن',
-  },
-
-  camera: {
-    title: 'اجازهٔ استفاده از دوربین',
-    body: 'برای اینکه انیمیشن دقیقاً روی برگهٔ چاپی بنر بنشیند، این صفحه به دوربین گوشی نیاز دارد. تصویر دوربین از گوشی شما خارج نمی‌شود و جایی ذخیره نمی‌شود.',
-    next: 'مرورگر از شما اجازه می‌خواهد؛ گزینهٔ «اجازه» را بزنید.',
-    allow: 'روشن کردن دوربین',
-    noCamera: 'بدون دوربین، روی تصویر برگه',
-  },
-
-  ar: {
+  scan: {
     loading: 'در حال آماده‌سازی…',
-    loadingSlow: 'اتصال کند است. می‌توانید صبر کنید یا همین حالا انیمیشن را روی تصویر برگه ببینید.',
-    point: 'دوربین را روی برگهٔ «{doc}» در بنر بگیرید',
-    lost: 'برگه از کادر خارج شد؛ دوباره آن را در کادر بیاورید',
-    notFound: 'برگه پیدا نشد. گوشی را کمی عقب‌تر و صاف نگه دارید و مطمئن شوید نور کافی است.',
-    close: 'بستن',
-    replay: 'پخش دوباره',
+    slow: 'اتصال کند است؛ چند لحظه صبر کنید…',
+    point: 'دوربین را روی یکی از برگه‌های بنر بگیرید',
+    hold: 'گوشی را کمی عقب‌تر و ثابت نگه دارید',
+    lost: 'برگه را دوباره در کادر بیاورید',
     viewResult: 'دیدن نتیجه',
-  },
-
-  errors: {
-    denied: 'دسترسی به دوربین داده نشد.',
-    deniedHelp: 'اگر نظرتان عوض شد، از تنظیمات مرورگر اجازهٔ دوربین را برای این صفحه روشن کنید. فعلاً می‌توانید همان انیمیشن را روی تصویر برگه ببینید.',
-    unsupported: 'این مرورگر یا گوشی از حالت دوربین پشتیبانی نمی‌کند.',
-    unsupportedHelp: 'همان انیمیشن را می‌توانید روی تصویر برگه ببینید.',
-    insecure: 'دوربین فقط روی نشانی امن (https) کار می‌کند.',
-    failed: 'حالت دوربین باز نشد.',
-    loadFailed: 'بارگذاری کامل نشد. اتصال اینترنت را بررسی کنید.',
-    retry: 'تلاش دوباره',
-  },
-
-  still: {
-    title: 'نمایش روی تصویر برگه',
+    close: 'بستن',
+    progress: '{done} از {total} برگه',
   },
 
   result: {
-    preparedNote: 'این یک نمایش از روند کار است. نتیجهٔ این برگه از قبل آماده شده است.',
-    back: 'بازگشت به برگه‌ها',
-    next: 'برگهٔ بعدی',
+    prepared: 'این یک نمایش است؛ نتیجهٔ این برگه از قبل آماده شده است.',
+    next: 'اسکن برگهٔ بعدی',
+    allDone: 'هر چهار برگه را دیدید. سپاس از همراهی شما.',
+    close: 'بستن',
   },
+
+  // One plain screen when the camera cannot be used.
+  cameraHelp: {
+    titleDenied: 'اجازهٔ دوربین داده نشده است',
+    titleUnavailable: 'دوربین در دسترس نیست',
+    titleNetwork: 'بارگذاری کامل نشد',
+    intro: 'این نمایش فقط با دوربین گوشی کار می‌کند. برای روشن کردن آن:',
+    steps: [
+      'بالای صفحه، روی نماد کنار نشانی سایت بزنید.',
+      'بخش «دوربین» را روی «اجازه» بگذارید.',
+      'صفحه را دوباره باز کنید یا دکمهٔ زیر را بزنید.',
+    ],
+    inApp: 'اگر صفحه را داخل تلگرام، اینستاگرام یا برنامهٔ دیگری باز کرده‌اید، آن را در مرورگر گوشی (کروم یا سافاری) باز کنید.',
+    network: 'اتصال اینترنت ضعیف است. چند لحظه بعد دوباره امتحان کنید.',
+    staff: 'اگر باز هم نشد، از همکاران ما در غرفه کمک بخواهید.',
+    retry: 'تلاش دوباره',
+  },
+
+  booth: {
+    title: 'نمونهٔ نتیجه‌ها',
+    note: 'ویژهٔ همکاران غرفه',
+    close: 'بستن',
+  },
+
+  docs: {
+    doc1: 'برگهٔ سفارش و شیفت',
+    doc2: 'عکس محیط کار',
+    doc3: 'نقشهٔ طبقه',
+    doc4: 'فاکتور و حوالهٔ تحویل',
+  },
+
+  units: { m2: 'متر مربع' },
 
   doc1: {
     resultTitle: 'سفارش‌ها و شیفت‌ها، مرتب‌شده',
@@ -97,5 +78,29 @@ export const S = {
     notesTitle: 'یادداشت‌ها',
     panelTitle: 'سفارش و برنامهٔ شیفت',
     panelFooter: 'نمونهٔ نمایشی · نتیجهٔ این برگه از قبل آماده شده است',
+  },
+  doc2: {
+    resultTitle: 'گزارش وضعیت روزانه',
+    resultSub: 'بخش‌های اصلی عکس برچسب خوردند و در قالب یک گزارش کوتاه مرتب شدند.',
+    reportTitle: 'وضعیت بخش‌ها',
+  },
+  doc3: {
+    resultTitle: 'اتاق‌ها، مساحت‌ها و فهرست اولیه',
+    resultSub: 'اتاق‌ها یکی‌یکی روی نقشه مشخص شدند و مساحت هر کدام از روی ابعاد چاپ‌شده نوشته شد.',
+    roomsTitle: 'اتاق‌ها',
+    cols: { room: 'اتاق', dims: 'ابعاد (متر)', area: 'مساحت' },
+    totalLabel: 'جمع زیربنا',
+    materialsTitle: 'فهرست اولیهٔ مصالح و تجهیزات',
+    draftNote: 'این فهرست پیش‌نویس است و پیش از خرید باید بازبینی شود.',
+  },
+  doc4: {
+    resultTitle: 'یک اختلاف بین فاکتور و حواله',
+    resultSub: 'ردیف‌های فاکتور به ردیف‌های حوالهٔ تحویل وصل شدند و یک ردیف ناهمخوان علامت خورد.',
+    diffLabel: 'اختلاف',
+    invoice: 'فاکتور',
+    slip: 'حواله',
+    amountLabel: 'مبلغ ردیف اختلاف',
+    compareTitle: 'مقایسهٔ ردیف‌ها',
+    cols: { item: 'کالا' },
   },
 };

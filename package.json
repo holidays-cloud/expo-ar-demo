@@ -5,8 +5,9 @@
   "description": "Expo booth AR demo. No build step for the site; these devDependencies only feed tools/ scripts.",
   "scripts": {
     "vendor": "node tools/vendor.mjs",
-    "print": "node tools/make-print.mjs",
+    "print": "node tools/make-print.mjs doc1 doc2 doc3 doc4",
     "targets": "node tools/compile-targets.mjs",
+    "inspect": "node tools/inspect-target.mjs targets/banner.mind",
     "serve": "node tools/serve.mjs"
   },
   "devDependencies": {

@@ -14,6 +14,7 @@
 //   2.6  the lifted lines fly into their rows and cells, then turn into typed text
 //   5.0  the one shift conflict pulses
 import { S } from '../strings.fa.js';
+import { loadTexture as loadTextureLocal, ACCENT, INK, MUTED, LINE, WARN, easeOut, easeInOut, phase, font, text, roundRect, fontsReady } from '../scene-kit.js';
 import {
   PAGE, HAND, CONFLICT, CLEAN, CLEAN_PANEL, CLEAN_GRID, ORDER_COLS, ORDERS, ORDER_NOTE, META,
   CALLOUT, NOTES, DAYS, SHIFT_NAMES, ROW_LABELS, cleanRect,
@@ -23,27 +24,9 @@ import { PIECES } from './doc1.layout.js';
 export const DURATION = 5.6; // seconds until the result is ready to view
 const IMAGE_URL = new URL('../../img/doc1.jpg', import.meta.url).href;
 
-const ACCENT = '#c9a45c';   // calm gold, matches the UI
-const INK = '#18202b';
-const MUTED = '#5d6878';
-const LINE = '#d9dde3';
-const WARN = '#d4892a';
-
-// ---- helpers ------------------------------------------------------------------
-const clamp01 = (x) => Math.max(0, Math.min(1, x));
-const easeOut = (x) => 1 - Math.pow(1 - x, 3);
-const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
-const phase = (t, start, dur) => clamp01((t - start) / dur);
-
 const U = 1 / PAGE.w;                 // mm -> units
 const X = (mm) => mm * U - 0.5;       // page x (mm) -> units
 const Y = (mm) => (PAGE.h / 2 - mm) * U;
-
-function loadTexture(THREE, url) {
-  return new Promise((resolve, reject) => {
-    new THREE.TextureLoader().load(url, resolve, undefined, () => reject(new Error('texture ' + url)));
-  });
-}
 
 /** Plane covering the mm rect [x,y,w,h], textured with the matching part of a full-page texture. */
 function subPlane(THREE, rect, texture, opts = {}) {
@@ -78,31 +61,6 @@ function makeCanvas() {
   try { ctx.direction = 'rtl'; } catch (e) { /* older browsers: alignment below is explicit anyway */ }
   return { c, ctx };
 }
-const font = (size, weight = 400) => `${weight} ${size}px Vazirmatn, Tahoma, sans-serif`;
-
-function text(ctx, str, x, y, { size = 3.4, weight = 400, color = INK, align = 'right', maxW } = {}) {
-  ctx.font = font(size, weight);
-  ctx.fillStyle = color;
-  ctx.textAlign = align;
-  ctx.textBaseline = 'middle';
-  if (maxW) {
-    // shrink to fit instead of overflowing a cell
-    let s = size;
-    while (s > 2 && ctx.measureText(str).width > maxW) { s -= 0.2; ctx.font = font(s, weight); }
-  }
-  ctx.fillText(str, x, y);
-}
-
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
 const mid = ([x, y, w, h]) => [x + w / 2, y + h / 2];
 
 /** Background of the clean panel: card, titles, headers, grid lines. */
@@ -222,10 +180,8 @@ function ringTexture(THREE) {
  * @param {{mode: 'ar'|'still', renderer?: any}} opts
  */
 export async function createScene(THREE, { mode, renderer }) {
-  await Promise.all([document.fonts.load(font(30, 400)), document.fonts.load(font(30, 700))]).catch(() => {});
-  const pageTex = await loadTexture(THREE, IMAGE_URL);
-  pageTex.colorSpace = THREE.SRGBColorSpace;
-  if (renderer) pageTex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  await fontsReady();
+  const pageTex = await loadTextureLocal(THREE, IMAGE_URL, renderer);
   const baseTex = canvasTexture(THREE, paintBase(), renderer);
   const rowsTex = canvasTexture(THREE, paintRows(), renderer);
 

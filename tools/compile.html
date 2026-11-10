@@ -2,13 +2,11 @@
 <script type="module">
   // Used only by tools/compile-targets.mjs: runs MindAR's own browser compiler.
   import { Compiler } from '/node_modules/mind-ar/dist/mindar-image.prod.js';
-  window.compile = async (src) => {
-    const img = new Image();
-    img.src = src;
-    await img.decode();
+  window.compile = async (srcs) => {
+    const imgs = [];
+    for (const src of srcs) { const img = new Image(); img.src = src; await img.decode(); imgs.push(img); }
     const compiler = new Compiler();
-    let last = 0;
-    await compiler.compileImageTargets([img], (p) => { if (p - last > 10) { last = p; console.log('progress ' + Math.round(p) + '%'); } });
+    await compiler.compileImageTargets(imgs, () => {});
     const data = await compiler.exportData();
     let bin = ''; const bytes = new Uint8Array(data);
     for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));

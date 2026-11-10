@@ -52563,7 +52563,7 @@ const O5 = (n, t) => [
 }, K5 = (n, t, e, s) => {
   const { x: o, y: r, z: i } = X5(n, t, e);
   return { x: o / i, y: r / i };
-}, Z5 = 6, B5 = 1, H5 = 10, _5 = 1, U5 = 0.8, Y5 = 1, Un = 1e3;
+}, Z5 = 6, B5 = 1, H5 = 10, _5 = 1, U5 = 0.8, Y5 = 0, Un = 1e3;
 class Q5 {
   constructor(t, e, s, o, r, i = !1) {
     this.markerDimensions = t, this.trackingDataList = e, this.projectionTransform = s, this.debugMode = i, this.trackingKeyframeList = [];
