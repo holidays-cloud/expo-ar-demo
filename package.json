@@ -9,7 +9,7 @@
     "targets": "node tools/compile-targets.mjs",
     "inspect": "node tools/inspect-target.mjs targets/banner.mind",
     "serve": "node tools/serve.mjs",
-    "print:card": "node tools/make-print.mjs doc5"
+    "print:card": "node tools/make-print.mjs doc5 doc6"
   },
   "devDependencies": {
     "@fontsource/aref-ruqaa": "5.3.0",

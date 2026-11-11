@@ -13,9 +13,14 @@ const SHOTS = FEEDS + '/oc-' + w + 'x' + hgt;
   // business card scan
   await page.click('text=باز کردن دوربین');
   const t0 = Date.now();
+  // frames through the card animation (from the moment the card is found)
+  await page.waitForFunction(() => { const h = document.querySelector('.hint'); return h && h.hidden; }, null, { timeout: 90000 });
+  for (const [i, ms] of [400, 1400, 2400, 3200, 4100, 5000, 6200].entries()) { await page.waitForTimeout(i ? ms - [400, 1400, 2400, 3200, 4100, 5000, 6200][i - 1] : ms); await page.screenshot({ path: `${SHOTS}-0-cardanim-${i}.png` }); }
   await page.waitForSelector('.card-actions', { timeout: 90000 });
+  await page.waitForTimeout(1200);
+  const pins = await page.$$eval('.ar-link', (els) => els.map((e) => `${e.querySelector('.t').textContent} -> ${e.getAttribute('href')} (visible ${getComputedStyle(e).opacity > 0.5})`));
+  console.log('links pinned on the card:', pins.join(' | '));
   log('card animation done after', ((Date.now() - t0) / 1000).toFixed(1), 's; buttons:', (await page.locator('.card-actions .btn').allInnerTexts()).join(' | '));
-  log('contact link:', await page.locator('.card-actions a').getAttribute('href'));
   await page.screenshot({ path: SHOTS + '-1-card-done.png' });
   // vCard
   const dl = page.waitForEvent('download', { timeout: 5000 }).catch(() => null);

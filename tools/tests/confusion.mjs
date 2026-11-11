@@ -11,9 +11,9 @@ p.on('pageerror', (e) => console.log('pageerror', e.message));
 await p.goto('http://localhost:8099/tools/tests/confusion.html');
 await p.waitForFunction(() => window.ready);
 const srcs = [];
-for (const d of ['doc1', 'doc2', 'doc3', 'doc4', 'doc5']) for (const pose of ['front', 'tilt', 'far']) srcs.push(`/tools/build/cam-${d}-${pose}.jpg`);
+for (const d of ['doc1', 'doc2', 'doc3', 'doc4', 'doc5', 'doc6']) for (const pose of ['front', 'tilt', 'far']) srcs.push(`/tools/build/cam-${d}-${pose}.jpg`);
 const rows = await p.evaluate((s) => window.run(s), srcs);
-console.log('photo                matches target:  doc1  doc2  doc3  doc4  doc5');
+console.log('photo                matches target:  doc1  doc2  doc3  doc4  doc5  doc6');
 let bad = 0, miss = 0;
 for (const r of rows) {
   const name = r.src.split('cam-')[1].replace('.jpg', '');

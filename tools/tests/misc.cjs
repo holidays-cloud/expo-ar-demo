@@ -20,7 +20,7 @@ const SP = process.argv[2];
     await page.waitForSelector('.paper');
     await scan('result ' + name);
     // documents 1-4 carry the "prepared in advance" note; our business card shows its contact buttons instead
-    const note = name === 'doc5' ? ((await page.locator('.contact-actions .btn').count()) === 3 ? 'نمایش (contact card, 3 buttons)' : 'missing buttons') : await page.locator('.prepared').textContent();
+    const note = name === 'doc5' ? ((await page.locator('.contact-actions .btn').count()) >= 3 ? 'نمایش (contact card with links and buttons)' : 'missing buttons') : await page.locator('.prepared').textContent();
     if (name === 'doc5') await page.screenshot({ path: SP + '/m-booth-doc5.png' });
     else await page.waitForSelector('text=کارت خودتان را هم امتحان کنید');
     await page.goBack(); await page.waitForTimeout(300);

@@ -30,8 +30,9 @@
   st.textContent = `@page { size: ${PAGE.w}mm ${PAGE.h}mm; margin: 0; } @media print { svg { width: ${PAGE.w}mm !important; height: ${PAGE.h}mm !important; } }`;
   document.head.appendChild(st);
   let qr = null;
-  if (doc === 'doc5') qr = await (await fetch('/print/assets/doc5-qr.json')).json().catch(() => null);
-  build(svg, { photo: params.get('photo'), qr });
+  if (doc === 'doc5' || doc === 'doc6') qr = await (await fetch('/print/assets/doc5-qr.json')).json().catch(() => null);
+  if (params.get('mode') === 'atlas') { document.documentElement.style.background = 'transparent'; document.body.style.background = 'transparent'; }
+  build(svg, { photo: params.get('photo'), qr, mode: params.get('mode') || 'front' });
   // wait for embedded images (the real photo) before measuring / screenshotting
   await Promise.all([...svg.querySelectorAll('image')].map((im) => new Promise((r) => { const i = new Image(); i.onload = i.onerror = r; i.src = im.getAttribute('href'); })));
   // Measure every handwritten piece in millimetres (axis-aligned, includes rotation).
