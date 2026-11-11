@@ -69,7 +69,7 @@ Generate the print-ready document images yourself with a script (SVG to PNG), at
 
 # Decisions that override the spec above (from the user, after step 2)
 - **Farsi only.** No English words anywhere a visitor can see (UI and printed documents).
-- **Four banner documents, not five.** Doc 5 (our business card) is no longer a scan target.
+- ~~Four banner documents, not five.~~ Superseded: our business card is back as Doc 5 (see below).
 - **No tiles, no explanations.** Intro → one tap opens the camera → the visitor points at any of the four documents and it is recognised. All four are in ONE tracking file (`targets/banner.mind`).
 - **No camera-free mode for visitors.** No "play on a still image", no visible "view sample result". Visitors only scan the banner and then see the result.
 - **Hidden booth-only samples:** tapping the logo 5 times within 3 s opens a menu of the four sample results (for staff).
@@ -83,7 +83,7 @@ Generate the print-ready document images yourself with a script (SVG to PNG), at
 # Implementation notes (kept up to date by Claude between sessions)
 
 ## Status
-- Steps 1–3 are built (shell, all four documents with print, animation and result card, one combined camera screen). Waiting for the user's phone test. Next: step 4 (card to constellation).
+- Steps 1–4 are built (shell, five documents incl. our business card, one combined camera screen, own-card constellation flow with save image / replay link / remembered on phone). Waiting for the user's phone test. Next, only when the client asks: step 5 (sky server + page), then step 7 (deployment notes + phone test checklist). Step 6 (lead capture) is dropped.
 - Hosting for phone tests: GitHub Pages (static, HTTPS). All paths are relative; `.nojekyll` is present.
 
 ## Layout
@@ -138,3 +138,13 @@ Settings live at the top of `js/ar.js` plus `TRACKING_KEYFRAME` in `tools/vendor
 - `import-scans.py` now also requires ink to be clearly blue or red (`pen_colour_weight`), because a black-and-white print makes printed parts darker than the colour form; falls back to darkness only for a black pen. Fragments lying ≥ 85 % on printed lines are dropped.
 - Doc 2 is now an official «گزارش تصویری روزانهٔ کارگاه»; SPOTS/REPORT describe the real photo (pump, mixer truck, scaffold, sand piles; follow-up: open slab edges without guardrail).
 - Tracking points (256 px keyframe): doc1 33, doc2 42, doc3 36, doc4 33. Confusion test: 0 wrong, 0 missed.
+
+# Decisions, round 4 (override everything above)
+- **No lead capture, no contact forms, no combined operations summary.** Do not build them. (Spec step 6 and the "after the documents" summary are dropped.)
+- **Doc 5 = our business card**, a leave-behind scanned later at home (must work whenever the site is online). A6 portrait 105 x 148 mm, Farsi only, brand/phone/site from `js/config.js`, real QR to `CONFIG.SITE_URL` (currently the GitHub Pages test address; replace before printing). In `targets/banner.mind` as target 4. Animation: pieces start scattered and resolve into place; then three buttons: save contact (vCard built on the phone), contact (phone or Telegram per `CONFIG.CONTACT_PRIMARY`), «کارت خودتان را هم امتحان کنید».
+- **Own-card flow** (spec step 4) is built: `js/owncard.js` (camera, framing, capture, deterministic choice), `js/constellations.js` (15 hand-coded constellations, Persian names to verify), `js/sky-anim.js` (2D canvas particles, adaptive count, poster). Entry points: camera-screen pill, under every result card, after the card animation, `?mode=card`. Personal replay link `?c=a.<index>.<hue>.<lum>` (base 36, all data in the link); remembered in localStorage (`expoar.constellation.v1`) so the intro offers «صورت فلکی شما». Nothing is uploaded. Wording: "assigned" (نسبت داده شد), never "read"/"analysed".
+- **Preload:** after the intro shows, the AR libraries, `targets/banner.mind` and the document modules download in the background (skipped with Save-Data).
+- **AR text size:** short labels/callouts (Docs 2–4) are on-screen HTML labels at 15/13 px pinned to page points (`ar.js` label layer: kept inside the screen, hidden rather than overlapped; scenes declare `labels` + `labelAlpha(t)`). Doc 1's clean table stays on the paper with 7–9 mm text (~13–17 px when the A4 fills a 390 px screen) and grows/shrinks (0.75–1.6x) to fill the screen after the pieces land; in landscape it asks to hold the phone upright. Do not shrink text below these sizes; shorten or show fewer labels instead.
+- **Booth menu** (5 taps on the logo) also plays our card's animation on screen without a camera (`openCardDemo` in app.js), then the three card buttons.
+- **Black-and-white printing is fine:** grey versions of all five documents were recognised (0 wrong, 0 missed) and tracked (Doc 4, card) in tests.
+- **Sky server (spec step 5): not started; wait for the client.**

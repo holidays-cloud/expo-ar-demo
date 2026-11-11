@@ -89,23 +89,24 @@ export const LEAVE_ARROW = { from: [118, 211], to: [dayCol(CONFLICT.day).x2 - 4,
 // The CLEAN layout that locks over the page at the end of the animation.
 // Same millimetre space as the paper so pieces only travel a short distance.
 // ---------------------------------------------------------------------------
-export const CLEAN_PANEL = { x: 12, y: 13, w: 186, h: 271 };
+export const CLEAN_PANEL = { x: 10, y: 12, w: 190, h: 273 };
 
+// The clean panel is read on a phone held at arm's length: when an A4 page fills a 390 px
+// wide screen, 1 mm is about 1.86 px, so text here is 7-9 mm (about 13-17 px on screen).
+// To fit at that size, the panel uses shortened wording (the full wording is on the
+// result card): item + quantity columns only, short day names, short notes.
 export const ORDER_COLS = [ // RTL: first column is rightmost
-  { key: 'n', x1: 184, x2: 196 },
-  { key: 'item', x1: 122, x2: 184 },
-  { key: 'qty', x1: 104, x2: 122 },
-  { key: 'unit', x1: 86, x2: 104 },
-  { key: 'note', x1: 16, x2: 86 },
+  { key: 'item', x1: 74, x2: 196 },
+  { key: 'qty', x1: 14, x2: 74 },
 ];
 export const ORDERS = [
   { n: '۱', item: 'کارتن بسته‌بندی بزرگ', qty: '۱۲', unit: 'عدد', note: '' },
   { n: '۲', item: 'نوار چسب پهن', qty: '۲۴', unit: 'حلقه', note: '' },
   { n: '۳', item: 'دستکش کار، سایز بزرگ', qty: '۳', unit: 'جعبه', note: '' },
-  { n: '۴', item: 'برچسب قیمت', qty: '۸', unit: 'بسته', note: 'اصلاح روی برگه: ۵ ← ۸' },
+  { n: '۴', item: 'برچسب قیمت', qty: '۸', unit: 'بسته', note: 'اصلاح روی برگه: ۵ ← ۸', badge: 'اصلاح‌شده' },
   { n: '۵', item: 'کاغذ تحریر', qty: '۱۰', unit: 'بند', note: '' },
   { n: '۶', item: 'ماژیک آبی و مشکی', qty: '۲', unit: 'جعبه', note: '' },
-  { n: '۷', item: 'تونر پرینتر', qty: '۱', unit: 'عدد', note: 'فوری', urgent: true },
+  { n: '۷', item: 'تونر پرینتر', qty: '۱', unit: 'عدد', note: 'فوری', urgent: true, badge: 'فوری' },
 ];
 export const ORDER_NOTE = 'ارسال سفارش: پیش از ظهر';
 export const META = 'برگهٔ شمارهٔ ۰۴۷، تاریخ ۱۹ آبان';
@@ -117,10 +118,22 @@ export const CALLOUT = {
 export const NOTES = ['تحویل بار: چهارشنبه صبح، درب پشتی', 'فاکتور قبلی هنوز نرسیده است'];
 export const ROW_LABELS = { morning: 'صبح', evening: 'عصر' };
 
+// Short forms used only inside the AR panel (big text)
+export const PANEL = {
+  meta: '۱۹ آبان',
+  qtyHead: 'تعداد', itemHead: 'کالا',
+  orderNote: 'ارسال: پیش از ظهر',
+  days: ['شنبه', 'یک', 'دو', 'سه', 'چهار', 'پنج'],
+  callout1: 'تداخل: رضا سه‌شنبه مرخصی است',
+  callout2: 'اما شیفت صبح سه‌شنبه با اوست',
+  notes: ['تحویل بار: چهارشنبه صبح', 'فاکتور قبلی هنوز نرسیده'],
+  footer: 'نمایش از پیش آماده‌شده',
+};
+
 // Clean-layout rectangles [x, y, w, h] in mm.
-const ROW_H = 10;
-const ORDERS_TOP = 45;
-export const CLEAN_GRID = { x1: 16, x2: 196, labelW: 24, rows: [143, 153, 169, 185] };
+const ROW_H = 12.5;
+const ORDERS_TOP = 43;
+export const CLEAN_GRID = { x1: 14, x2: 196, labelW: 26, rows: [156, 167, 184, 201] };
 const cleanDay = (k) => {
   const w = (CLEAN_GRID.x2 - CLEAN_GRID.labelW - CLEAN_GRID.x1) / 6;
   const right = CLEAN_GRID.x2 - CLEAN_GRID.labelW - w * k;
@@ -128,12 +141,12 @@ const cleanDay = (k) => {
 };
 
 export const CLEAN = {
-  title: [16, 17, 180, 13],
-  meta: [16, 18, 60, 10],
-  ordersHeader: [16, 36, 180, 9],
-  rows: Object.fromEntries(ORDERS.map((_, i) => ['r' + (i + 1), [16, ORDERS_TOP + i * ROW_H, 180, ROW_H]])),
-  onote: [16, 116, 180, 9],
-  shiftTitle: [16, 132, 180, 9],
+  title: [14, 15, 182, 15],
+  meta: [14, 15, 50, 15],
+  ordersHeader: [14, 33, 182, 10],
+  rows: Object.fromEntries(ORDERS.map((_, i) => ['r' + (i + 1), [14, ORDERS_TOP + i * ROW_H, 182, ROW_H]])),
+  onote: [14, 131, 182, 11],
+  shiftTitle: [14, 144, 182, 11],
   cells: {
     ...Object.fromEntries(DAYS.map((_, k) => { const [a, b] = cleanDay(k); return ['hd' + k, [a, CLEAN_GRID.rows[0], b - a, CLEAN_GRID.rows[1] - CLEAN_GRID.rows[0]]]; })),
     hl_m: [CLEAN_GRID.x2 - CLEAN_GRID.labelW, CLEAN_GRID.rows[1], CLEAN_GRID.labelW, CLEAN_GRID.rows[2] - CLEAN_GRID.rows[1]],
@@ -141,11 +154,11 @@ export const CLEAN = {
     ...Object.fromEntries(DAYS.map((_, k) => { const [a, b] = cleanDay(k); return ['cm' + k, [a, CLEAN_GRID.rows[1], b - a, CLEAN_GRID.rows[2] - CLEAN_GRID.rows[1]]]; })),
     ...Object.fromEntries(DAYS.map((_, k) => { const [a, b] = cleanDay(k); return ['ce' + k, [a, CLEAN_GRID.rows[2], b - a, CLEAN_GRID.rows[3] - CLEAN_GRID.rows[2]]]; })),
   },
-  callout: [16, 192, 180, 22],
-  notesTitle: [16, 221, 180, 9],
-  n1: [16, 230, 180, 9],
-  n2: [16, 239, 180, 9],
-  footer: [16, 270, 180, 9],
+  callout: [14, 205, 182, 24],
+  notesTitle: [14, 233, 182, 10],
+  n1: [14, 243, 182, 12],
+  n2: [14, 255, 182, 12],
+  footer: [14, 270, 182, 11],
 };
 
 // Flat lookup: target id -> rect

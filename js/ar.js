@@ -36,6 +36,67 @@ const LOCK_FAST = 25;            // follow speed for real movement (per second, 
 // Automated tests may override the settings above (never set on the real site).
 const TUNE = (typeof window !== 'undefined' && window.__AR_TUNE) || {};
 
+// ---- On-screen labels ----------------------------------------------------------------
+// Short labels and callouts are drawn as normal page text (15 px / 13 px, set in app.css),
+// pinned to a point on the paper, so they stay readable however far the paper is. A scene
+// declares them as `labels: [{x, y, title, sub, warn}]` (x/y in page units) and returns
+// their visibility with `labelAlpha(t)`. Boxes are kept inside the screen; a box that would
+// cover another visible one is hidden rather than shrunk.
+const LABEL_TOP_SAFE = 76, LABEL_BOTTOM_SAFE = 130, LABEL_GAP = 16;
+function makeLabelLayer(container) {
+  const layer = document.createElement('div');
+  layer.className = 'ar-labels';
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'ar-leaders');
+  layer.appendChild(svg);
+  container.appendChild(layer);
+  return { layer, svg };
+}
+function buildLabels(L, labels) {
+  return labels.map((lb) => {
+    const box = document.createElement('div');
+    box.className = 'ar-label' + (lb.warn ? ' warn' : '');
+    const t = document.createElement('span'); t.className = 't'; t.textContent = lb.title; box.appendChild(t);
+    if (lb.sub) { const s = document.createElement('span'); s.className = 's'; s.textContent = lb.sub; box.appendChild(s); }
+    const dot = document.createElement('i'); dot.className = 'ar-dot' + (lb.warn ? ' warn' : '');
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('class', 'ar-leader' + (lb.warn ? ' warn' : ''));
+    L.layer.appendChild(dot); L.layer.appendChild(box); L.svg.appendChild(line);
+    return { box, dot, line, w: 0, h: 0 };
+  });
+}
+function removeLabels(els) { (els || []).forEach((e) => { e.box.remove(); e.dot.remove(); e.line.remove(); }); }
+function hideLabels(els) { (els || []).forEach((e) => { e.box.style.opacity = '0'; e.dot.style.opacity = '0'; e.line.style.opacity = '0'; }); }
+function placeLabels(els, anchors, alphas, W, H) {
+  const placed = [];
+  const order = alphas.map((a, i) => i).filter((i) => alphas[i] > 0.01 && anchors[i]).sort((a, b) => alphas[b] - alphas[a] || b - a);
+  const shown = new Set();
+  for (const i of order) {
+    const e = els[i], [ax, ay] = anchors[i];
+    if (!e.w) { e.w = e.box.offsetWidth; e.h = e.box.offsetHeight; }
+    const w = e.w, h = e.h;
+    const cx = Math.max(8 + w / 2, Math.min(W - 8 - w / 2, ax));
+    const tries = [ay - LABEL_GAP - h, ay + LABEL_GAP];
+    let top = null;
+    for (const t0 of tries) {
+      const t = Math.max(LABEL_TOP_SAFE, Math.min(H - LABEL_BOTTOM_SAFE - h, t0));
+      const r = { l: cx - w / 2 - 4, r: cx + w / 2 + 4, t: t - 4, b: t + h + 4 };
+      if (!placed.some((p) => r.l < p.r && r.r > p.l && r.t < p.b && r.b > p.t)) { top = t; placed.push(r); break; }
+    }
+    if (top === null) continue; // no room without covering another label: skip it for now
+    shown.add(i);
+    const a = alphas[i];
+    e.box.style.transform = `translate(${Math.round(cx - w / 2)}px, ${Math.round(top)}px)`;
+    e.box.style.opacity = String(a);
+    e.dot.style.transform = `translate(${Math.round(ax - 5)}px, ${Math.round(ay - 5)}px)`;
+    e.dot.style.opacity = String(a);
+    const ly = top > ay ? top : top + h;
+    e.line.setAttribute('x1', ax); e.line.setAttribute('y1', ay); e.line.setAttribute('x2', cx); e.line.setAttribute('y2', ly);
+    e.line.style.opacity = String(a * 0.9);
+  }
+  els.forEach((e, i) => { if (!shown.has(i)) { e.box.style.opacity = '0'; e.dot.style.opacity = '0'; e.line.style.opacity = '0'; } });
+}
+
 const fail = (code, cause) => Object.assign(new Error(code), { code, cause });
 
 /**
@@ -110,6 +171,9 @@ export async function runAR(container, hooks = {}) {
   });
   const { renderer, scene, camera } = mindar;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const labelLayer = makeLabelLayer(container);
+  const tmpV = new THREE.Vector3();
+  let rotateShown = false;
 
   // One anchor per document; the visible content lives in a separate, smoothed group.
   const slots = hooks.docs.map((doc) => {
@@ -124,6 +188,7 @@ export async function runAR(container, hooks = {}) {
   let current = null, paused = false, stopped = false, last = performance.now();
 
   function disposeAnim(slot) {
+    removeLabels(slot.labelEls); slot.labelEls = null;
     if (slot.anim) { slot.holder.remove(slot.anim.group); slot.anim.dispose(); }
     slot.anim = null; slot.loading = null; slot.t = 0; slot.done = false;
   }
@@ -135,7 +200,9 @@ export async function runAR(container, hooks = {}) {
       const anim = await mod.createScene(THREE, { mode: 'ar', renderer });
       if (stopped || slot.loading === null) { anim.dispose(); return; }
       slot.anim = anim;
+      slot.pageH = anim.pageH || 297 / 210; // page height in page-width units
       slot.holder.add(anim.group);
+      if (anim.labels && anim.labels.length) slot.labelEls = buildLabels(labelLayer, anim.labels);
     })().catch((e) => { console.warn('scene failed', e); slot.loading = null; });
   }
 
@@ -149,6 +216,7 @@ export async function runAR(container, hooks = {}) {
       if (!slot.anim) { status('preparing'); prepare(slot); } else status('tracking');
     };
     slot.anchor.onTargetLost = () => {
+      rotateShown = false;
       if (current === slot && !paused) status('lost');
     };
   });
@@ -187,13 +255,22 @@ export async function runAR(container, hooks = {}) {
       // MindAR keeps group.visible true through short tracking drops (MISS_TOLERANCE)
       const visible = !paused && slot === current && slot.anchor.group.visible && !!slot.anim;
       slot.holder.visible = visible;
-      if (!visible) continue;
+      if (!visible) { hideLabels(slot.labelEls); continue; }
       if (TUNE.lock === false) slot.holder.matrix.copy(slot.anchor.group.matrix);
       else slot.smoother.apply(slot.anchor.group.matrix, dt, slot.holder.matrix);
       slot.holder.matrixWorldNeedsUpdate = true;
       if (slot.t === 0) status('tracking');
       slot.t += dt;
-      slot.anim.update(slot.t);
+      // page and screen size in CSS px, for scenes that adapt text size to the screen
+      slot.holder.updateMatrixWorld(true);
+      const W = container.clientWidth, H = container.clientHeight;
+      const toScreen = (x, y) => { tmpV.set(x, y, 0).applyMatrix4(slot.holder.matrixWorld).project(camera); return tmpV.z < 1 ? [(tmpV.x + 1) / 2 * W, (1 - tmpV.y) / 2 * H] : null; };
+      const pa = toScreen(-0.5, 0), pb = toScreen(0.5, 0), pc = toScreen(0, -slot.pageH / 2), pd = toScreen(0, slot.pageH / 2);
+      const view = pa && pb && pc && pd ? { pageW: Math.hypot(pb[0] - pa[0], pb[1] - pa[1]), pageH: Math.hypot(pd[0] - pc[0], pd[1] - pc[1]), screenW: W, screenH: H } : null;
+      slot.anim.update(slot.t, view);
+      if (slot.labelEls) placeLabels(slot.labelEls, slot.anim.labels.map((lb) => toScreen(lb.x, lb.y)), slot.anim.labelAlpha(slot.t), W, H);
+      const wantRotate = !!slot.anim.prefersPortrait && W > H * 1.15;
+      if (wantRotate !== rotateShown) { rotateShown = wantRotate; status(wantRotate ? 'rotate' : 'tracking'); }
       if (!slot.done && slot.t >= slot.anim.duration) { slot.done = true; hooks.onDone && hooks.onDone(slot.doc.id); }
       if (dbg) dbg.push({ t: now, doc: slot.doc.id, raw: slot.anchor.group.matrix.elements.slice(), stable: slot.holder.matrix.elements.slice(), proj: camera.projectionMatrix.elements.slice(), unf: unfiltered(slot) });
     }

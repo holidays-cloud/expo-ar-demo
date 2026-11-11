@@ -7,5 +7,6 @@ const loaders = {
   doc2: () => import('./doc2.js'),
   doc3: () => import('./doc3.js'),
   doc4: () => import('./doc4.js'),
+  doc5: () => import('./doc5.js'),
 };
 export const DOCS = TARGET_ORDER.map((id, targetIndex) => ({ id, targetIndex, load: loaders[id] }));

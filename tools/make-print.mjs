@@ -20,7 +20,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const docs = process.argv.slice(2).filter((a) => !a.startsWith('--'));
-if (!docs.length) docs.push('doc1', 'doc2', 'doc3', 'doc4');
+if (!docs.length) docs.push('doc1', 'doc2', 'doc3', 'doc4', 'doc5');
 // Documents that are filled in by hand get a blank form + a filled example for the writer.
 const HANDWRITTEN = ['doc1', 'doc4']; // add 'doc3' to hand-draw the floor plan later
 // Doc 2 uses a real photo when scans/photo.jpg exists (prepared here with ImageMagick).
@@ -44,8 +44,25 @@ if (docs.includes('doc2') && existsSync(PHOTO_SRC)) {
 }
 if (docs.includes('doc2') && existsSync(join(root, 'print', 'assets', 'doc2-photo.jpg'))) photoParam = '&photo=1';
 
+// Business card QR (opens the site) + a separate QR for the own-card link (?mode=card)
+// that can be printed on the banner. Both addresses come from js/config.js.
+{
+  const QR = require('qrcode');
+  const { CONFIG } = await import('../js/config.js');
+  if (docs.includes('doc5')) {
+    const q = QR.create(CONFIG.SITE_URL, { errorCorrectionLevel: 'M' });
+    writeFileSync(join(root, 'print', 'assets', 'doc5-qr.json'), JSON.stringify({ size: q.modules.size, data: Array.from(q.modules.data) }));
+  }
+  const cardUrl = CONFIG.SITE_URL + (CONFIG.SITE_URL.includes('?') ? '&' : '?') + 'mode=card';
+  await QR.toFile(join(root, 'print', 'qr-own-card.png'), cardUrl, { errorCorrectionLevel: 'M', width: 1200, margin: 4 });
+  await QR.toFile(join(root, 'print', 'qr-site.png'), CONFIG.SITE_URL, { errorCorrectionLevel: 'M', width: 1200, margin: 4 });
+}
+
 try {
   for (const doc of docs) {
+    const { PAGE } = await import(`../js/docs/${doc}.data.js`);
+    const PW = Math.round(PAGE.w / 25.4 * 300), PH = Math.round(PAGE.h / 25.4 * 300); // 300 DPI
+    const WW = 1240, WH = Math.round(WW * PAGE.h / PAGE.w);                            // web copy
     const render = async (width, height, template = false, readable = false) => {
       const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
       page.on('console', (m) => m.type() === 'error' && console.error('[page]', m.text()));
@@ -55,20 +72,25 @@ try {
       return page;
     };
     // 300 DPI print PNG
-    let page = await render(2480, 3508);
+    let page = await render(PW, PH);
     const { pieces, svg } = await page.evaluate(() => window.__result);
     const tmpPng = join(root, 'print', `${doc}.tmp.png`);
     await page.screenshot({ path: tmpPng, fullPage: false });
     execFileSync('convert', [tmpPng, '-units', 'PixelsPerInch', '-density', '300', join(root, 'print', `${doc}.png`)]);
     execFileSync('rm', [tmpPng]);
     await page.emulateMedia({ media: 'print' });
-    await page.pdf({ path: join(root, 'print', `${doc}.pdf`), width: '210mm', height: '297mm', printBackground: true, pageRanges: '1' });
+    await page.pdf({ path: join(root, 'print', `${doc}.pdf`), width: `${PAGE.w}mm`, height: `${PAGE.h}mm`, printBackground: true, pageRanges: '1' });
     await page.close();
 
     // Web image
-    page = await render(1240, 1754);
+    page = await render(WW, WH);
     await page.screenshot({ path: join(root, 'img', `${doc}.jpg`), type: 'jpeg', quality: 84 });
     await page.close();
+    if (doc === 'doc5') { // background only (pieces left out), used by the card animation
+      page = await render(WW, WH, true);
+      await page.screenshot({ path: join(root, 'img', 'doc5-bg.jpg'), type: 'jpeg', quality: 84 });
+      await page.close();
+    }
 
     const fontStyle = `<style>@font-face{font-family:'Vazirmatn';src:url('../fonts/Vazirmatn-wght.woff2') format('woff2');font-weight:100 900}@font-face{font-family:'HandFa';src:url('../fonts/ArefRuqaa-Regular.woff2') format('woff2');font-weight:400}@font-face{font-family:'HandFa';src:url('../fonts/ArefRuqaa-Bold.woff2') format('woff2');font-weight:700}</style>`;
     writeFileSync(join(root, 'print', `${doc}.svg`), svg.replace(/(<svg[^>]*>)/, `$1${fontStyle}`));
@@ -80,13 +102,13 @@ try {
 
     if (HANDWRITTEN.includes(doc)) {
       // Example to copy: the filled version with the handwriting in plain Vazirmatn (easy to read).
-      page = await render(2480, 3508, false, true);
+      page = await render(PW, PH, false, true);
       await page.screenshot({ path: join(root, 'print', 'templates', `${doc}-example.png`) });
       await page.emulateMedia({ media: 'print' });
       await page.pdf({ path: join(root, 'print', 'templates', `${doc}-example.pdf`), width: '210mm', height: '297mm', printBackground: true, pageRanges: '1' });
       await page.close();
       writeFileSync(join(root, 'print', 'templates', `${doc}-fields.json`), JSON.stringify(pieces));
-      page = await render(2480, 3508, true);
+      page = await render(PW, PH, true);
       const tmp = join(root, 'print', 'templates', `${doc}.tmp.png`);
       await page.screenshot({ path: tmp });
       execFileSync('convert', [tmp, '-units', 'PixelsPerInch', '-density', '300', join(root, 'print', 'templates', `${doc}-blank.png`)]);

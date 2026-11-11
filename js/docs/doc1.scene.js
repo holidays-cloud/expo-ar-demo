@@ -16,12 +16,12 @@
 import { S } from '../strings.fa.js';
 import { loadTexture as loadTextureLocal, ACCENT, INK, MUTED, LINE, WARN, easeOut, easeInOut, phase, font, text, roundRect, fontsReady } from '../scene-kit.js';
 import {
-  PAGE, HAND, CONFLICT, CLEAN, CLEAN_PANEL, CLEAN_GRID, ORDER_COLS, ORDERS, ORDER_NOTE, META,
-  CALLOUT, NOTES, DAYS, SHIFT_NAMES, ROW_LABELS, cleanRect,
+  PAGE, HAND, CONFLICT, CLEAN, CLEAN_PANEL, CLEAN_GRID, ORDER_COLS, ORDERS, PANEL,
+  DAYS, SHIFT_NAMES, ROW_LABELS, cleanRect,
 } from './doc1.data.js';
 import { PIECES } from './doc1.layout.js';
 
-export const DURATION = 5.6; // seconds until the result is ready to view
+export const DURATION = 5.8; // seconds until the result is ready to view
 const IMAGE_URL = new URL('../../img/doc1.jpg', import.meta.url).href;
 
 const U = 1 / PAGE.w;                 // mm -> units
@@ -63,97 +63,91 @@ function makeCanvas() {
 }
 const mid = ([x, y, w, h]) => [x + w / 2, y + h / 2];
 
-/** Background of the clean panel: card, titles, headers, grid lines. */
+// Text sizes in the panel (mm). With an A4 page filling a 390 px wide phone screen,
+// 1 mm ~ 1.86 px, so 7 mm ~ 13 px, 7.5 mm ~ 14 px, 9 mm ~ 17 px. Never smaller than 7 mm.
+const TS = { title: 9, head: 7, cell: 7.5, small: 7 };
+
+/** Background of the clean panel: card, titles, headers, grid lines, printed labels. */
 function paintBase() {
   const { c, ctx } = makeCanvas();
   const P = CLEAN_PANEL;
   ctx.fillStyle = '#ffffff';
   roundRect(ctx, P.x, P.y, P.w, P.h, 3);
   ctx.fill();
-  ctx.strokeStyle = '#e4e1d8'; ctx.lineWidth = 0.3; ctx.stroke();
+  ctx.strokeStyle = '#e4e1d8'; ctx.lineWidth = 0.4; ctx.stroke();
 
-  // title bar
   const [tx, ty, tw, th] = CLEAN.title;
-  text(ctx, S.doc1.panelTitle, tx + tw, ty + th / 2, { size: 5.2, weight: 700 });
-  ctx.fillStyle = ACCENT; ctx.fillRect(tx + tw - 26, ty + th + 1.2, 26, 0.7);
+  text(ctx, S.doc1.panelTitle, tx + tw, ty + th / 2, { size: TS.title, weight: 800, maxW: tw - 54 });
+  ctx.fillStyle = ACCENT; ctx.fillRect(tx + tw - 40, ty + th + 0.6, 40, 1);
 
-  // orders header row
   const [hx, hy, hw, hh] = CLEAN.ordersHeader;
   ctx.fillStyle = '#f2f0ea'; ctx.fillRect(hx, hy, hw, hh);
-  for (const col of ORDER_COLS) {
-    const align = col.key === 'item' || col.key === 'note' ? 'right' : 'center';
-    const x = align === 'right' ? col.x2 - 1.5 : (col.x1 + col.x2) / 2;
-    text(ctx, S.doc1.cols[col.key], x, hy + hh / 2, { size: 2.9, weight: 700, color: MUTED, align });
-  }
-  // row lines
-  ctx.strokeStyle = LINE; ctx.lineWidth = 0.25;
+  const [ci, cq] = ORDER_COLS;
+  text(ctx, PANEL.itemHead, ci.x2 - 2, hy + hh / 2, { size: TS.head, weight: 700, color: MUTED });
+  text(ctx, PANEL.qtyHead, (cq.x1 + cq.x2) / 2, hy + hh / 2, { size: TS.head, weight: 700, color: MUTED, align: 'center' });
+  ctx.strokeStyle = LINE; ctx.lineWidth = 0.35;
   Object.values(CLEAN.rows).forEach(([x, y, w, h]) => { ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x + w, y + h); ctx.stroke(); });
+  ctx.beginPath(); ctx.moveTo(cq.x2, hy); ctx.lineTo(cq.x2, CLEAN.rows.r7[1] + CLEAN.rows.r7[3]); ctx.stroke();
 
-  // shift section
   const [sx, sy, sw, sh] = CLEAN.shiftTitle;
-  text(ctx, S.doc1.shiftsTitle, sx + sw, sy + sh / 2, { size: 3.6, weight: 700 });
+  text(ctx, S.doc1.shiftsTitle, sx + sw, sy + sh / 2, { size: 8, weight: 800 });
   const G = CLEAN_GRID;
   ctx.fillStyle = '#f2f0ea'; ctx.fillRect(G.x1, G.rows[0], G.x2 - G.x1, G.rows[1] - G.rows[0]);
-  const corner = [G.x2 - G.labelW, G.rows[0], G.labelW, G.rows[1] - G.rows[0]];
-  text(ctx, S.doc1.shiftCorner, ...mid(corner), { size: 2.8, weight: 700, color: MUTED, align: 'center' });
-  ctx.strokeStyle = '#c9ced6'; ctx.lineWidth = 0.3;
+  ctx.strokeStyle = '#c9ced6'; ctx.lineWidth = 0.4;
   G.rows.forEach((y) => { ctx.beginPath(); ctx.moveTo(G.x1, y); ctx.lineTo(G.x2, y); ctx.stroke(); });
   const colW = (G.x2 - G.labelW - G.x1) / 6;
   [G.x2, G.x2 - G.labelW, ...DAYS.map((_, k) => G.x2 - G.labelW - colW * (k + 1))].forEach((x) => {
     ctx.beginPath(); ctx.moveTo(x, G.rows[0]); ctx.lineTo(x, G.rows[3]); ctx.stroke();
   });
+  // day headers (short names) and row labels are printed on the paper too, so they come with the panel
+  PANEL.days.forEach((d, k) => text(ctx, d, ...mid(CLEAN.cells['hd' + k]), { size: TS.head, weight: 700, align: 'center', maxW: colW - 2 }));
+  text(ctx, ROW_LABELS.morning, ...mid(CLEAN.cells.hl_m), { size: TS.cell, weight: 800, align: 'center' });
+  text(ctx, ROW_LABELS.evening, ...mid(CLEAN.cells.hl_e), { size: TS.cell, weight: 800, align: 'center' });
 
-  // day headers and row labels (printed on the paper too, so they come with the panel)
-  DAYS.forEach((d, k) => text(ctx, d, ...mid(CLEAN.cells['hd' + k]), { size: 3, weight: 700, align: 'center' }));
-  text(ctx, ROW_LABELS.morning, ...mid(CLEAN.cells.hl_m), { size: 3.4, weight: 700, align: 'center' });
-  text(ctx, ROW_LABELS.evening, ...mid(CLEAN.cells.hl_e), { size: 3.4, weight: 700, align: 'center' });
-
-  // notes title + footer
   const [nx, ny, nw, nh] = CLEAN.notesTitle;
-  text(ctx, S.doc1.notesTitle, nx + nw, ny + nh / 2, { size: 3.6, weight: 700 });
+  text(ctx, S.doc1.notesTitle, nx + nw, ny + nh / 2, { size: 8, weight: 800 });
   const [fx, fy, fw, fh] = CLEAN.footer;
-  text(ctx, S.doc1.panelFooter, fx + fw / 2, fy + fh / 2, { size: 2.6, color: '#8a93a0', align: 'center' });
+  text(ctx, PANEL.footer, fx + fw / 2, fy + fh / 2, { size: TS.small, color: '#8a93a0', align: 'center' });
   return c;
 }
 
 /** Row and cell contents (transparent background), revealed one by one. */
 function paintRows() {
   const { c, ctx } = makeCanvas();
+  const [ci, cq] = ORDER_COLS;
   ORDERS.forEach((o, i) => {
     const [, y, , h] = CLEAN.rows['r' + (i + 1)];
     const cy = y + h / 2;
-    for (const col of ORDER_COLS) {
-      const v = o[col.key];
-      if (!v) continue;
-      const align = col.key === 'item' || col.key === 'note' ? 'right' : 'center';
-      const x = align === 'right' ? col.x2 - 1.5 : (col.x1 + col.x2) / 2;
-      const isUrgent = col.key === 'note' && o.urgent;
-      text(ctx, v, x, cy, {
-        size: col.key === 'note' ? 2.9 : 3.4, weight: col.key === 'qty' || isUrgent ? 700 : 400,
-        color: isUrgent ? WARN : col.key === 'note' ? MUTED : INK, align, maxW: col.x2 - col.x1 - 3,
-      });
+    text(ctx, o.item, ci.x2 - 2, cy, { size: TS.cell, maxW: ci.x2 - ci.x1 - (o.badge ? 34 : 4) });
+    text(ctx, `${o.qty} ${o.unit}`, (cq.x1 + cq.x2) / 2, cy, { size: TS.cell, weight: 800, align: 'center', maxW: cq.x2 - cq.x1 - 4 });
+    if (o.badge) { // small coloured tag at the left end of the item column
+      ctx.font = font(TS.small, 700);
+      const w = ctx.measureText(o.badge).width + 5;
+      const bx = ci.x1 + 2;
+      ctx.fillStyle = o.urgent ? '#fbe3c4' : '#e8edf4';
+      roundRect(ctx, bx, cy - 4.6, w, 9.2, 4.6); ctx.fill();
+      text(ctx, o.badge, bx + w / 2, cy + 0.2, { size: TS.small, weight: 700, color: o.urgent ? '#9a5410' : MUTED, align: 'center' });
     }
   });
   const on = CLEAN.onote;
-  text(ctx, ORDER_NOTE, on[0] + on[2] - 1.5, on[1] + on[3] / 2, { size: 3, color: MUTED });
+  text(ctx, PANEL.orderNote, on[0] + on[2] - 2, on[1] + on[3] / 2, { size: TS.small, color: MUTED });
   const m = CLEAN.meta;
-  text(ctx, META, m[0] + 1, m[1] + m[3] / 2, { size: 3, color: MUTED, align: 'left' });
+  text(ctx, PANEL.meta, m[0] + 2, m[1] + m[3] / 2, { size: TS.small, color: MUTED, align: 'left' });
 
-  SHIFT_NAMES.morning.forEach((n, k) => text(ctx, n, ...mid(CLEAN.cells['cm' + k]), { size: 3.5, align: 'center' }));
-  SHIFT_NAMES.evening.forEach((n, k) => text(ctx, n, ...mid(CLEAN.cells['ce' + k]), { size: 3.5, align: 'center' }));
+  SHIFT_NAMES.morning.forEach((n, k) => text(ctx, n, ...mid(CLEAN.cells['cm' + k]), { size: TS.cell, align: 'center', maxW: CLEAN.cells['cm' + k][2] - 2 }));
+  SHIFT_NAMES.evening.forEach((n, k) => text(ctx, n, ...mid(CLEAN.cells['ce' + k]), { size: TS.cell, align: 'center', maxW: CLEAN.cells['ce' + k][2] - 2 }));
 
-  // conflict callout box
+  // conflict callout box (two short lines)
   const [cx, cy, cw, ch] = CLEAN.callout;
   ctx.fillStyle = '#fdf3e4';
-  roundRect(ctx, cx + 0.5, cy + 0.5, cw - 1, ch - 1, 2); ctx.fill();
-  ctx.strokeStyle = WARN; ctx.lineWidth = 0.4; ctx.stroke();
-  ctx.fillStyle = WARN; ctx.beginPath(); ctx.arc(cx + cw - 6, cy + 6.2, 2.2, 0, Math.PI * 2); ctx.fill();
-  text(ctx, '!', cx + cw - 6, cy + 6.3, { size: 3, weight: 800, color: '#fff', align: 'center' });
-  text(ctx, CALLOUT.title, cx + cw - 10.5, cy + 6.2, { size: 3.4, weight: 700, color: '#8a4f0f' });
-  text(ctx, CALLOUT.body, cx + cw - 4, cy + 12.4, { size: 3, color: INK, maxW: cw - 8 });
-  text(ctx, CALLOUT.action, cx + cw - 4, cy + 17.6, { size: 3, color: MUTED, maxW: cw - 8 });
+  roundRect(ctx, cx + 0.5, cy + 0.5, cw - 1, ch - 1, 2.5); ctx.fill();
+  ctx.strokeStyle = WARN; ctx.lineWidth = 0.6; ctx.stroke();
+  ctx.fillStyle = WARN; ctx.beginPath(); ctx.arc(cx + cw - 8, cy + 7.5, 3.6, 0, Math.PI * 2); ctx.fill();
+  text(ctx, '!', cx + cw - 8, cy + 7.8, { size: 6, weight: 900, color: '#fff', align: 'center' });
+  text(ctx, PANEL.callout1, cx + cw - 15, cy + 7.6, { size: TS.cell, weight: 800, color: '#8a4f0f', maxW: cw - 20 });
+  text(ctx, PANEL.callout2, cx + cw - 15, cy + 16.6, { size: TS.small, color: INK, maxW: cw - 20 });
 
-  NOTES.forEach((n, i) => { const r = CLEAN['n' + (i + 1)]; text(ctx, '•  ' + n, r[0] + r[2] - 1.5, r[1] + r[3] / 2, { size: 3.2 }); });
+  PANEL.notes.forEach((n, i) => { const r = CLEAN['n' + (i + 1)]; text(ctx, '•  ' + n, r[0] + r[2] - 2, r[1] + r[3] / 2, { size: TS.cell, maxW: r[2] - 4 }); });
   return c;
 }
 
@@ -209,27 +203,31 @@ export async function createScene(THREE, { mode, renderer }) {
   });
   group.add(frame);
 
-  // Clean panel background
+  // Clean panel (background, highlight, rows) lives in its own group so that, once the
+  // handwriting has landed, it can grow to fill the screen when the paper looks small.
+  const panel = new THREE.Group();
+  group.add(panel);
+  const addP = (mesh) => { group.remove(mesh); panel.add(mesh); return mesh; };
   const P = CLEAN_PANEL;
-  const base = add(subPlane(THREE, [P.x, P.y, P.w, P.h], baseTex, { opacity: 0, z: 0.02, order: 3 }));
+  const base = addP(add(subPlane(THREE, [P.x, P.y, P.w, P.h], baseTex, { opacity: 0, z: 0.02, order: 3 })));
 
   // Conflict highlight (fill + ring) on the clean grid
   const cRect = CLEAN.cells[(CONFLICT.row === 'morning' ? 'cm' : 'ce') + CONFLICT.day];
-  const hlFill = add(subPlane(THREE, cRect, null, { color: new THREE.Color(WARN), opacity: 0, z: 0.021, order: 4 }));
+  const hlFill = addP(add(subPlane(THREE, cRect, null, { color: new THREE.Color(WARN), opacity: 0, z: 0.021, order: 4 })));
   const ringTex = ringTexture(THREE); disposables.push(ringTex);
-  const ring = add(subPlane(THREE, [cRect[0] - 1, cRect[1] - 1, cRect[2] + 2, cRect[3] + 2], null, { opacity: 0, z: 0.023, order: 7 }));
+  const ring = addP(add(subPlane(THREE, [cRect[0] - 1, cRect[1] - 1, cRect[2] + 2, cRect[3] + 2], null, { opacity: 0, z: 0.023, order: 7 })));
   ring.material.map = ringTex; ring.material.needsUpdate = true;
   // connector from the callout up to the cell
   const call = CLEAN.callout;
   const connX = cRect[0] + cRect[2] / 2;
-  const conn = add(subPlane(THREE, [connX - 0.25, cRect[1] + cRect[3], 0.5, call[1] - (cRect[1] + cRect[3]) + 0.6], null, { color: new THREE.Color(WARN), opacity: 0, z: 0.022, order: 4 }));
+  const conn = addP(add(subPlane(THREE, [connX - 0.4, cRect[1] + cRect[3], 0.8, call[1] - (cRect[1] + cRect[3]) + 0.6], null, { color: new THREE.Color(WARN), opacity: 0, z: 0.022, order: 4 })));
 
   // Row / cell contents (one plane per target, all sharing one texture)
   const rows = new Map();
   const rowTargets = [...new Set(HAND.map((h) => h.to))];
   for (const id of rowTargets) {
     const r = cleanRect(id);
-    rows.set(id, add(subPlane(THREE, r, rowsTex, { opacity: 0, z: 0.022, order: 5 })));
+    rows.set(id, addP(add(subPlane(THREE, r, rowsTex, { opacity: 0, z: 0.022, order: 5 }))));
   }
 
   // Handwritten pieces cut from the page image
@@ -263,7 +261,18 @@ export async function createScene(THREE, { mode, renderer }) {
   const rowReveal = new Map();
   for (const p of pieces) rowReveal.set(p.item.to, Math.max(rowReveal.get(p.item.to) || 0, p.flyAt + 0.9));
 
-  function update(t) {
+  const allLanded = Math.max(...rowReveal.values()) + 0.35;
+  /**
+   * view (from ar.js): page size on screen and screen size, in CSS px. After all pieces have
+   * landed, the panel is resized to fill about 94 % of the screen: it grows (up to 1.6x) when
+   * the paper is held a little far, so the text stays readable, and shrinks (down to 0.75x)
+   * when the paper is so close that it no longer fits, so nothing is cut off at the edges
+   * (at that distance the text is still larger than normal body text).
+   */
+  function update(t, view) {
+    let grow = 1;
+    if (view && view.pageW > 0) grow = Math.max(0.75, Math.min(1.6, 0.94 * view.screenW / view.pageW, 0.94 * view.screenH / view.pageH));
+    panel.scale.setScalar(1 + (grow - 1) * easeInOut(phase(t, allLanded, 0.7)));
     // frame
     const f = phase(t, 0, 0.5) * (1 - phase(t, 5.2, 0.8));
     frame.children.forEach((m) => { m.material.opacity = 0.9 * f; });
@@ -306,6 +315,7 @@ export async function createScene(THREE, { mode, renderer }) {
     group,
     duration: DURATION,
     update,
+    prefersPortrait: true, // a portrait A4 page: in landscape the panel text stays small
     dispose() { disposables.forEach((d) => d.dispose && d.dispose()); },
   };
 }

@@ -1,6 +1,6 @@
 // Document 4 animation: each invoice line connects to the matching line on the delivery
 // slip; matching lines are ticked, the one mismatch is flagged and pulses.
-import { kit, page, fontsReady, paintLabel, phase, easeOut, pulse, OK, WARN, roundRect } from '../scene-kit.js';
+import { kit, page, phase, easeOut, pulse, OK, WARN, roundRect } from '../scene-kit.js';
 import { S } from '../strings.fa.js';
 import { PAGE, ITEMS, MISMATCH, RESULT, invoiceRowRect, slipRowRect } from './doc4.data.js';
 
@@ -15,7 +15,6 @@ function paintTick(ctx, w, h) {
 }
 
 export async function createScene(THREE, { renderer }) {
-  await fontsReady();
   const P = page(PAGE.w, PAGE.h);
   const K = kit(THREE, P);
   const frame = K.frame();
@@ -33,10 +32,10 @@ export async function createScene(THREE, { renderer }) {
     const tick = bad ? null : K.card(b[0] + 10, b[1] + b[3] / 2, 9, 9, paintTick, { renderer, z: 0.04, order: 25 + i, px: 14 });
     return { bad, ra, rb, fa, fb, link, tick, start: 0.6 + i * STEP };
   });
+  // the mismatch callout is an on-screen label (normal phone text size, see ar.js)
   const bad = slipRowRect(MISMATCH);
-  const callout = K.card(bad[0] + 48, bad[1] - 12, 92, 22, (ctx, W, H) => paintLabel(ctx, W, H, {
-    title: `${S.doc4.diffLabel}: ${RESULT.diff}`, sub: `${S.doc4.invoice} ${RESULT.invoice} · ${S.doc4.slip} ${RESULT.received}`, warn: true,
-  }), { renderer, z: 0.06, order: 40 });
+  const labels = [{ x: P.X(bad[0] + 40), y: P.Y(bad[1] + bad[3] / 2), title: `${S.doc4.diffLabel}: ${RESULT.diff}`, sub: `${S.doc4.invoice} ${RESULT.invoice} · ${S.doc4.slip} ${RESULT.received}`, warn: true }];
+  const labelAlpha = (t) => [phase(t, FLAG_AT, 0.4)];
 
   function update(t) {
     frame.set(0.9 * phase(t, 0, 0.5) * (1 - phase(t, DURATION, 0.8)));
@@ -48,10 +47,7 @@ export async function createScene(THREE, { renderer }) {
       p.link.setProgress(phase(t, p.start + 0.1, 0.4));
       if (p.tick) { const k = easeOut(phase(t, p.start + 0.45, 0.25)); p.tick.material.opacity = k; p.tick.scale.setScalar(0.6 + 0.4 * k); }
     }
-    const c = easeOut(phase(t, FLAG_AT, 0.4));
-    callout.material.opacity = c;
-    callout.scale.setScalar(0.88 + 0.12 * c);
   }
   update(0);
-  return { group: K.group, duration: DURATION, update, dispose: K.dispose };
+  return { group: K.group, duration: DURATION, update, labels, labelAlpha, pageH: P.H, dispose: K.dispose };
 }

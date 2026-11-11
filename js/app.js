@@ -1,35 +1,53 @@
-// App shell: intro -> one camera screen (recognises any of the four documents) -> results.
-// No tiles, no explanations, no camera-free mode for visitors.
+// App shell: intro -> one camera screen (recognises any of the five documents) -> results,
+// plus the visitor's own card -> constellation flow.
+// No tiles, no explanations, no camera-free mode for visitors, no forms.
 // Booth staff can open sample results by tapping the logo several times (CONFIG.BOOTH_TAPS).
+//
+// Entry points of the own-card flow: the small button on the camera screen, the button
+// under every result card, the third button after our card's animation, and the direct
+// links ?mode=card (to print as a QR on the banner) and ?c=<code> (a personal replay link).
 import { S } from './strings.fa.js';
 import { CONFIG } from './config.js';
 import { h, fmt, toFa, loadProgress, markDone } from './util.js';
 import { DOCS } from './docs/index.js';
+import { TARGET_FILE } from './docs/targets.js';
 
 const root = document.getElementById('app');
-let session = null;   // running AR controller
+let session = null;   // running AR controller, or own-card controller
 let abort = null;     // AbortController for an AR start still in progress
 let overlay = null;   // open result / booth overlay element
+let refreshDotsFn = null;
 
 document.title = S.appTitle;
 
 // ---- navigation ---------------------------------------------------------------------
-// The camera screen and each overlay push a history entry, so the phone's back button
-// closes an overlay first, then leaves the camera.
+// Screens and overlays push history entries, so the phone's back button closes an overlay
+// first, then goes back one screen.
 window.addEventListener('popstate', (e) => {
   if (overlay) { closeOverlay(); return; }
-  const name = e.state && e.state.name;
-  if (name === 'scan') showScan(false); else showIntro();
+  route(e.state || { name: 'intro' });
 });
+function route(state) {
+  if (state.name === 'scan') showScan();
+  else if (state.name === 'owncard') showOwnCard(state);
+  else showIntro();
+}
+function go(name, extra = {}, { replace = false } = {}) {
+  const state = { name, ...extra };
+  if (replace) history.replaceState(state, ''); else history.pushState(state, '');
+  route(state);
+}
 
 function stopSession() {
   if (abort) { abort.abort(); abort = null; }
   if (session) { try { session.stop(); } catch (e) { console.warn(e); } session = null; }
+  refreshDotsFn = null;
   document.body.classList.remove('immersive');
 }
 
 function mount(el) {
   stopSession();
+  closeOverlay(true);
   root.replaceChildren(el);
   window.scrollTo(0, 0);
 }
@@ -41,11 +59,10 @@ function logo(extraClass = '') {
   svg.setAttribute('viewBox', '0 0 40 40');
   svg.setAttribute('aria-hidden', 'true');
   // Placeholder mark: three ordered points (replace with the real logo later).
-  [['M8 28 L20 12 L32 24', 'none']].forEach(([d]) => { const p = document.createElementNS(svgNS, 'path'); p.setAttribute('d', d); p.setAttribute('class', 'logo-line'); svg.appendChild(p); });
+  const p = document.createElementNS(svgNS, 'path'); p.setAttribute('d', 'M8 28 L20 12 L32 24'); p.setAttribute('class', 'logo-line'); svg.appendChild(p);
   [[8, 28], [20, 12], [32, 24]].forEach(([cx, cy]) => { const c = document.createElementNS(svgNS, 'circle'); c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', 3.4); c.setAttribute('class', 'logo-dot'); svg.appendChild(c); });
   let taps = [];
-  const el = h('div', { class: 'logo ' + extraClass },
-    svg, h('span', { class: 'logo-name' }, CONFIG.BRAND_NAME_FA));
+  const el = h('div', { class: 'logo ' + extraClass }, svg, h('span', { class: 'logo-name' }, CONFIG.BRAND_NAME_FA));
   el.addEventListener('click', () => {
     const now = Date.now();
     taps = taps.filter((t) => now - t < 3000).concat(now);
@@ -54,16 +71,37 @@ function logo(extraClass = '') {
   return el;
 }
 
+// ---- background preload --------------------------------------------------------------------
+// After the intro shows, quietly download the AR libraries, the tracking file and the
+// document code, so the first camera open is fast. Skipped when the phone asks to save data.
+let preloaded = false;
+function preloadAR() {
+  if (preloaded) return;
+  preloaded = true;
+  if (navigator.connection && navigator.connection.saveData) return;
+  const run = () => {
+    import('./ar.js').catch(() => {});
+    import('../vendor/three/three.module.min.js').catch(() => {});
+    import('../vendor/mindar/mindar-image-three.prod.js').catch(() => {});
+    fetch(TARGET_FILE, { cache: 'force-cache' }).then((r) => r.arrayBuffer()).catch(() => {});
+    DOCS.forEach((d) => d.load().catch(() => {}));
+  };
+  if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 2500 }); else setTimeout(run, 1200);
+}
+
 // ---- 1. intro ----------------------------------------------------------------------
-function showIntro() {
-  closeOverlay(true);
+async function showIntro() {
+  const { recallCode } = await import('./owncard.js');
+  const saved = recallCode();
   mount(h('main', { class: 'screen intro' },
     logo('logo-intro'),
     h('h1', {}, S.intro.title),
     h('p', { class: 'lead' }, S.intro.body),
-    h('button', { class: 'btn primary wide', onclick: () => { history.pushState({ name: 'scan' }, ''); showScan(true); } }, S.intro.start),
+    h('button', { class: 'btn primary wide', onclick: () => go('scan') }, S.intro.start),
+    saved ? h('button', { class: 'btn wide yours', onclick: () => go('owncard', { code: saved }) }, '✦ ', S.ownCard.yours) : null,
     h('p', { class: 'fine' }, S.intro.fine),
   ));
+  preloadAR();
 }
 
 // ---- 2. camera screen -----------------------------------------------------------------
@@ -78,7 +116,6 @@ function progressDots() {
 }
 
 function showScan() {
-  document.body.classList.add('immersive');
   const view = h('div', { class: 'stage-view' });
   const hint = h('p', { class: 'hint', role: 'status', 'aria-live': 'polite' });
   const actions = h('div', { class: 'stage-actions' });
@@ -88,6 +125,7 @@ function showScan() {
     h('div', { class: 'stage-top' },
       logo('logo-stage'),
       dotsWrap,
+      h('button', { class: 'btn pill', onclick: () => go('owncard') }, h('span', { 'aria-hidden': 'true' }, '✦ '), S.ownCard.camButton),
       h('button', { class: 'btn round', 'aria-label': S.scan.close, onclick: () => history.back() }, '×'),
     ),
     h('div', { class: 'stage-bottom' }, hint, actions),
@@ -99,7 +137,7 @@ function showScan() {
 
   const myAbort = new AbortController();
   abort = myAbort;
-  let slowTimer = setTimeout(() => setHint(S.scan.slow, true), 9000);
+  const slowTimer = setTimeout(() => setHint(S.scan.slow, true), 9000);
   let holdTimer = null;
   const armHold = () => { clearTimeout(holdTimer); holdTimer = setTimeout(() => setHint(S.scan.hold), 12000); };
   myAbort.signal.addEventListener('abort', () => { clearTimeout(slowTimer); clearTimeout(holdTimer); });
@@ -118,8 +156,16 @@ function showScan() {
           if (s === 'preparing') { clearTimeout(holdTimer); setHint(S.scan.loading, true); }
           if (s === 'tracking') { clearTimeout(holdTimer); setHint(''); }
           if (s === 'lost') { setHint(S.scan.lost); armHold(); }
+          if (s === 'rotate') setHint(S.scan.rotate);
         },
-        onDone: (docId) => {
+        onDone: async (docId) => {
+          if (docId === 'doc5') {
+            // our business card: the three actions right on the camera screen
+            markDone(docId); refreshDots();
+            const mod = await DOCS.find((d) => d.id === 'doc5').load();
+            actions.replaceChildren(h('div', { class: 'card-actions' }, mod.cardActions({ onTryOwnCard: () => go('owncard') })));
+            return;
+          }
           actions.replaceChildren(h('button', { class: 'btn primary', onclick: () => {
             markDone(docId);
             refreshDots();
@@ -137,7 +183,7 @@ function showScan() {
       clearTimeout(slowTimer);
       if (myAbort.signal.aborted) return;
       console.warn('AR failed', e);
-      showCameraHelp(e.code || 'failed');
+      showCameraHelp(e.code || 'failed', () => showScan());
     }
   })();
 }
@@ -148,18 +194,26 @@ function openResult(docId, { fromScan = false, sample = false, replace = false }
   const doc = DOCS.find((d) => d.id === docId);
   const body = h('div', { class: 'result-body' }, h('p', { class: 'hint busy' }, S.scan.loading));
   const head = h('div', { class: 'result-head' });
-  const allDone = DOCS.every((d) => loadProgress().done[d.id]);
+  const foot = h('div', { class: 'result-foot' });
   const panel = h('section', { class: 'overlay result', role: 'dialog', 'aria-modal': 'true' },
-    h('div', { class: 'overlay-inner' },
-      head, body,
+    h('div', { class: 'overlay-inner' }, head, body, foot));
+  showOverlay(panel, { fromScan, docId }, replace);
+  const tryOwn = () => { closeOverlay(true); go('owncard', {}, { replace: true }); };
+  doc.load().then((mod) => {
+    head.replaceChildren(h('p', { class: 'kicker' }, S.docs[docId]), h('h2', {}, mod.resultTitle()), h('p', { class: 'lead' }, mod.resultSub()));
+    if (mod.kind === 'card') {
+      body.replaceChildren(mod.renderResult({ onTryOwnCard: tryOwn }));
+      foot.replaceChildren(h('button', { class: 'btn ghost wide', onclick: () => history.back() }, S.result.close));
+      return;
+    }
+    body.replaceChildren(mod.renderResult());
+    const allDone = DOCS.every((d) => loadProgress().done[d.id]);
+    foot.replaceChildren(...[
       h('p', { class: 'prepared' }, S.result.prepared),
       !sample && allDone ? h('p', { class: 'lead center' }, S.result.allDone) : null,
       h('button', { class: 'btn primary wide', onclick: () => history.back() }, sample || allDone ? S.result.close : S.result.next),
-    ));
-  showOverlay(panel, { fromScan, docId }, replace);
-  doc.load().then((mod) => {
-    head.replaceChildren(h('p', { class: 'kicker' }, S.docs[docId]), h('h2', {}, mod.resultTitle()), h('p', { class: 'lead' }, mod.resultSub()));
-    body.replaceChildren(mod.renderResult());
+      h('button', { class: 'btn wide', onclick: tryOwn }, h('span', { 'aria-hidden': 'true' }, '✦ '), S.result.tryOwn),
+    ].filter(Boolean)); // (native replaceChildren would print a null as the text "null")
   }).catch(() => body.replaceChildren(h('p', { class: 'hint' }, S.cameraHelp.network)));
 }
 
@@ -171,17 +225,62 @@ function openBooth() {
       h('h2', {}, S.booth.title),
       h('p', { class: 'fine' }, S.booth.note),
       DOCS.map((d) => h('button', { class: 'btn wide', onclick: () => openResult(d.id, { sample: true, replace: true }) }, S.docs[d.id])),
+      h('button', { class: 'btn wide', onclick: () => openCardDemo() }, '✦ ', S.booth.cardDemo),
       h('button', { class: 'btn ghost wide', onclick: () => history.back() }, S.booth.close),
     ));
   showOverlay(panel, null, false);
+}
+
+// Booth only: our card's animation played on screen (no camera), with the card itself
+// drawn underneath, then the same three buttons as after a real scan.
+async function openCardDemo() {
+  const view = h('div', { class: 'demo-view' });
+  const actions = h('div', { class: 'stage-actions demo-actions' });
+  const panel = h('section', { class: 'overlay demo', role: 'dialog', 'aria-modal': 'true' },
+    view, h('button', { class: 'btn round demo-close', 'aria-label': S.scan.close, onclick: () => history.back() }, '×'),
+    h('div', { class: 'stage-bottom' }, actions));
+  showOverlay(panel, null, true);
+  const [THREE, mod] = await Promise.all([import('../vendor/three/three.module.min.js'), DOCS.find((d) => d.id === 'doc5').load()]);
+  if (overlay !== panel) return;
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  view.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 20);
+  const anim = await mod.createScene(THREE, { mode: 'ar', renderer });
+  // the "real" card under the animation
+  const tex = await new Promise((res) => new THREE.TextureLoader().load(new URL('../img/doc5.jpg', import.meta.url).href, res));
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const H = anim.pageH;
+  const card = new THREE.Mesh(new THREE.PlaneGeometry(1, H), new THREE.MeshBasicMaterial({ map: tex }));
+  card.renderOrder = 0;
+  scene.add(card, anim.group);
+  const fit = () => {
+    const w = view.clientWidth, hh = view.clientHeight;
+    renderer.setSize(w, hh);
+    camera.aspect = w / hh;
+    const v = (camera.fov * Math.PI) / 180, d = Math.max((H * 1.25) / 2 / Math.tan(v / 2), 1.25 / 2 / Math.tan(v / 2) / camera.aspect);
+    camera.position.set(0, -d * 0.12, d); camera.lookAt(0, 0, 0); camera.updateProjectionMatrix();
+  };
+  fit();
+  window.addEventListener('resize', fit);
+  const t0 = performance.now();
+  let done = false;
+  renderer.setAnimationLoop(() => {
+    const t = (performance.now() - t0) / 1000;
+    anim.update(t);
+    if (!done && t >= anim.duration) { done = true; actions.replaceChildren(h('div', { class: 'card-actions' }, mod.cardActions({ onTryOwnCard: () => { closeOverlay(true); go('owncard', {}, { replace: true }); } }))); }
+    renderer.render(scene, camera);
+  });
+  panel._dispose = () => { renderer.setAnimationLoop(null); window.removeEventListener('resize', fit); anim.dispose(); tex.dispose(); card.geometry.dispose(); card.material.dispose(); renderer.dispose(); };
 }
 
 // Each overlay owns one history entry; its close button calls history.back(), and the
 // popstate handler closes it (so the phone's back button behaves the same way).
 function showOverlay(panel, info, replace) {
   const wasOpen = !!overlay;
-  if (overlay) { overlay.remove(); overlay = null; }
-  if (session) session.pause();
+  if (overlay) { if (overlay._dispose) overlay._dispose(); overlay.remove(); overlay = null; }
+  if (session && session.pause) session.pause();
   overlay = panel;
   overlay._info = info;
   document.body.appendChild(panel);
@@ -192,18 +291,104 @@ function showOverlay(panel, info, replace) {
 function closeOverlay(silent = false) {
   if (!overlay) return;
   const info = overlay._info;
+  if (overlay._dispose) overlay._dispose();
   overlay.remove();
   overlay = null;
   document.body.classList.remove('has-overlay');
-  if (silent || !session) return;
-  if (info && info.fromScan) session.reset(info.docId); // scanning the same page again replays it
+  if (silent || !session || !session.resume) return;
+  if (info && info.fromScan && session.reset) session.reset(info.docId); // scanning the same page again replays it
   session.resume();
   if (refreshDotsFn) refreshDotsFn();
 }
-let refreshDotsFn = null;
+
+// ---- 3. the visitor's own card -> constellation ---------------------------------------
+async function showOwnCard(state = {}) {
+  const oc = await import('./owncard.js');
+  const stage = h('main', { class: 'stage owncard' });
+  mount(stage);
+  document.body.classList.add('immersive');
+  const top = h('div', { class: 'stage-top' }, logo('logo-stage'), h('span'), h('button', { class: 'btn round', 'aria-label': S.scan.close, onclick: () => history.back() }, '×'));
+
+  // Replay from a link or from this phone's memory
+  const replay = state.code ? oc.decodeCode(state.code) : null;
+  if (replay) { animate(oc, stage, top, null, replay, state.code); return; }
+
+  // Capture: live camera with a card-shaped frame
+  const video = h('video', { class: 'oc-video', playsinline: true, muted: true, autoplay: true });
+  const frame = h('div', { class: 'card-frame' }, h('i', { class: 'c1' }), h('i', { class: 'c2' }), h('i', { class: 'c3' }), h('i', { class: 'c4' }));
+  const hint = h('p', { class: 'hint busy' }, S.ownCard.starting);
+  const shot = h('button', { class: 'shutter', 'aria-label': S.ownCard.capture, disabled: true });
+  stage.replaceChildren(video, frame, top, h('div', { class: 'stage-bottom' }, hint, shot, h('p', { class: 'fine on-dark' }, S.ownCard.privacy)));
+  let stopCam = null;
+  session = { stop() { if (stopCam) stopCam(); stopCam = null; } };
+  try {
+    stopCam = await oc.openCamera(video);
+  } catch (e) {
+    console.warn('camera failed', e);
+    showCameraHelp(e.code || 'failed', () => showOwnCard(state));
+    return;
+  }
+  if (!stage.isConnected) { stopCam(); return; }
+  hint.classList.remove('busy'); hint.textContent = S.ownCard.hint;
+  shot.disabled = false;
+  shot.addEventListener('click', () => {
+    const photo = oc.captureFrame(video, frame.getBoundingClientRect());
+    stopCam(); stopCam = null;
+    const m = oc.measureCard(photo);
+    const info = { index: oc.pickConstellation(m), hue: m.hue, lum: m.lum };
+    const code = oc.encodeCode(info);
+    oc.rememberCode(code);
+    history.replaceState({ name: 'owncard', code }, ''); // back/refresh replays instead of reopening the camera
+    animate(oc, stage, top, photo, info, code);
+  }, { once: true });
+}
+
+async function animate(oc, stage, top, photo, info, code) {
+  const { playConstellation, renderPoster } = await import('./sky-anim.js');
+  const sky = h('div', { class: 'sky' });
+  const actions = h('div', { class: 'stage-actions oc-actions' });
+  stage.replaceChildren(sky, top, h('div', { class: 'stage-bottom' }, actions));
+  const text = { assigned: S.ownCard.assigned, tagline: S.ownCard.tagline };
+  const opts = { photo, index: info.index, hue: info.hue, lum: info.lum, brandName: CONFIG.BRAND_NAME_FA, text };
+  if (session) session.stop();
+  const ctrl = playConstellation(sky, { ...opts, onDone: () => showActions() });
+  session = ctrl;
+
+  function showActions() {
+    const link = location.origin + location.pathname + '?c=' + code;
+    // the link box only appears when the phone cannot open its share sheet
+    const linkBox = h('input', { class: 'link-box', readonly: true, value: link, dir: 'ltr', 'aria-label': S.ownCard.link, hidden: true });
+    const note = h('p', { class: 'fine on-dark', hidden: true }, S.ownCard.linkHint);
+    actions.replaceChildren(
+      h('div', { class: 'oc-row' },
+        h('button', { class: 'btn primary', onclick: async () => saveBlob(await renderPoster({ ...opts, text: { ...text, assigned: S.ownCard.assignedPoster } }), 'constellation.png') }, S.ownCard.saveImage),
+        h('button', { class: 'btn', onclick: () => shareLink(link, linkBox, note) }, S.ownCard.link)),
+      linkBox, note,
+      h('div', { class: 'oc-row' },
+        h('button', { class: 'btn ghost', onclick: () => go('owncard', {}, { replace: true }) }, S.ownCard.again),
+        h('button', { class: 'btn ghost', onclick: () => go('scan', {}, { replace: true }) }, S.ownCard.backToCamera)),
+    );
+  }
+}
+
+async function saveBlob(blob, name) {
+  const file = (() => { try { return new File([blob], name, { type: blob.type }); } catch (e) { return null; } })();
+  try {
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  const url = URL.createObjectURL(blob);
+  const a = h('a', { href: url, download: name });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+async function shareLink(link, box, note) {
+  try { if (navigator.share) { await navigator.share({ title: S.ownCard.yours, url: link }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+  box.hidden = false; note.hidden = false;
+  try { await navigator.clipboard.writeText(link); note.textContent = S.ownCard.linkCopied + ' · ' + S.ownCard.linkHint; } catch (e) { box.select(); }
+}
 
 // ---- camera unavailable / denied: one plain screen ---------------------------------
-function showCameraHelp(code) {
+function showCameraHelp(code, retry) {
   const network = code === 'load';
   const title = network ? S.cameraHelp.titleNetwork : code === 'denied' ? S.cameraHelp.titleDenied : S.cameraHelp.titleUnavailable;
   mount(h('main', { class: 'screen narrow help' },
@@ -215,10 +400,16 @@ function showCameraHelp(code) {
       h('p', { class: 'lead' }, S.cameraHelp.inApp),
     ],
     h('p', { class: 'staff' }, S.cameraHelp.staff),
-    h('button', { class: 'btn primary wide', onclick: () => showScan() }, S.cameraHelp.retry),
+    h('button', { class: 'btn primary wide', onclick: () => (retry ? retry() : showScan()) }, S.cameraHelp.retry),
   ));
 }
 
 // ---- start ----------------------------------------------------------------------------
-history.replaceState({ name: 'intro' }, '');
-showIntro();
+// ?c=<code> replays a personal constellation; ?mode=card opens the own-card camera.
+{
+  const params = new URLSearchParams(location.search);
+  history.replaceState({ name: 'intro' }, '');
+  if (params.get('c')) go('owncard', { code: params.get('c') });
+  else if (params.get('mode') === 'card') go('owncard');
+  else showIntro();
+}
