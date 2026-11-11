@@ -25,7 +25,13 @@
   svg.setAttribute('viewBox', `0 0 ${PAGE.w} ${PAGE.h}`);
   svg.setAttribute('width', `${PAGE.w}mm`); svg.setAttribute('height', `${PAGE.h}mm`);
   document.body.appendChild(svg);
-  build(svg, { photo: params.get('photo') });
+  // print size follows the document's page size (A4 for docs 1-4, A6 for the card)
+  const st = document.createElement('style');
+  st.textContent = `@page { size: ${PAGE.w}mm ${PAGE.h}mm; margin: 0; } @media print { svg { width: ${PAGE.w}mm !important; height: ${PAGE.h}mm !important; } }`;
+  document.head.appendChild(st);
+  let qr = null;
+  if (doc === 'doc5') qr = await (await fetch('/print/assets/doc5-qr.json')).json().catch(() => null);
+  build(svg, { photo: params.get('photo'), qr });
   // wait for embedded images (the real photo) before measuring / screenshotting
   await Promise.all([...svg.querySelectorAll('image')].map((im) => new Promise((r) => { const i = new Image(); i.onload = i.onerror = r; i.src = im.getAttribute('href'); })));
   // Measure every handwritten piece in millimetres (axis-aligned, includes rotation).

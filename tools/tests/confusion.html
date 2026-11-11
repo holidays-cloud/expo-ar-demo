@@ -1,0 +1,20 @@
+<!doctype html><meta charset="utf-8"><body><img id="i">
+<script type="module">
+import '/vendor/mindar/mindar-image-three.prod.js';
+import { C as Controller } from '/vendor/mindar/controller-mGt1s8dJ.js';
+window.run = async (srcs) => {
+  const c = new Controller({ inputWidth: 720, inputHeight: 960 });
+  const { dimensions } = await c.addImageTargets('/targets/banner.mind');
+  const img = document.getElementById('i');
+  const rows = [];
+  for (const src of srcs) {
+    img.src = src; await img.decode();
+    const { featurePoints } = await c.detect(img);
+    const per = [];
+    for (let t = 0; t < dimensions.length; t++) { const { modelViewTransform } = await c.match(featurePoints, t); per.push(!!modelViewTransform); }
+    rows.push({ src, per });
+  }
+  return rows;
+};
+window.ready = true;
+</script>
