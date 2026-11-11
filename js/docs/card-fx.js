@@ -2,7 +2,6 @@
 // doc6 "out of the sky"): soft glow, glowing ring, light sweep band, additive sprites,
 // and the tappable contact links pinned on the card.
 import { phase } from '../scene-kit.js';
-import { contactLinks } from '../contact.js';
 
 export function canvasTex(THREE, w, h, paint) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -40,14 +39,4 @@ export function makeFx(THREE, K, P) {
     m.scale.setScalar(s0 + f * (s1 - s0));
   }
   return { ADD, glowTex, ringTex, bandTex, sprite, updateSweep, flash };
-}
-
-/** The tappable contact links pinned over the card's contact rows (rendered by ar.js). */
-export function linkLabels(P, ORDER, startAt) {
-  const L = contactLinks();
-  const labels = ORDER.links.map((l) => {
-    const c = L.find((x) => x.kind === l.id);
-    return { x: P.X((14 + ORDER.iconX - 8) / 2), y: P.Y(l.y + 0.5), title: c.label, sub: c.sub, href: c.href, center: true, link: l.id };
-  });
-  return { labels, labelAlpha: (t) => labels.map((_, i) => phase(t, startAt + i * 0.15, 0.35)) };
 }

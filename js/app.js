@@ -92,14 +92,14 @@ function preloadAR() {
 
 // ---- 1. intro ----------------------------------------------------------------------
 async function showIntro() {
-  const { recallCode } = await import('./owncard.js');
-  const saved = recallCode();
+  const { hasCard } = await import('./owncard.js');
+  const saved = hasCard();
   mount(h('main', { class: 'screen intro' },
     logo('logo-intro'),
     h('h1', {}, S.intro.title),
     h('p', { class: 'lead' }, S.intro.body),
     h('button', { class: 'btn primary wide', onclick: () => go('scan') }, S.intro.start),
-    saved ? h('button', { class: 'btn wide yours', onclick: () => go('owncard', { code: saved }) }, '✦ ', S.ownCard.yours) : null,
+    saved ? h('button', { class: 'btn wide yours', onclick: () => go('owncard', { replay: true }) }, '✦ ', S.ownCard.yours) : null,
     h('p', { class: 'fine' }, S.intro.fine),
   ));
   preloadAR();
@@ -316,7 +316,7 @@ function closeOverlay(silent = false) {
   if (refreshDotsFn) refreshDotsFn();
 }
 
-// ---- 3. the visitor's own card -> constellation ---------------------------------------
+// ---- 3. the visitor's own card: it comes apart and is put back together ----------------
 async function showOwnCard(state = {}) {
   const oc = await import('./owncard.js');
   const stage = h('main', { class: 'stage owncard' });
@@ -324,9 +324,12 @@ async function showOwnCard(state = {}) {
   document.body.classList.add('immersive');
   const top = h('div', { class: 'stage-top' }, logo('logo-stage'), h('span'), h('button', { class: 'btn round', 'aria-label': S.scan.close, onclick: () => history.back() }, '×'));
 
-  // Replay from a link or from this phone's memory
-  const replay = state.code ? oc.decodeCode(state.code) : null;
-  if (replay) { animate(oc, stage, top, null, replay, state.code); return; }
+  // Replay the card kept on this phone
+  if (state.replay) {
+    const photo = await oc.recallCard();
+    if (!stage.isConnected) return;
+    if (photo) { animate(stage, top, photo); return; }
+  }
 
   // Capture: live camera with a card-shaped frame
   const video = h('video', { class: 'oc-video', playsinline: true, muted: true, autoplay: true });
@@ -350,36 +353,26 @@ async function showOwnCard(state = {}) {
   shot.addEventListener('click', () => {
     const photo = oc.captureFrame(video, frame.getBoundingClientRect());
     stopCam(); stopCam = null;
-    const m = oc.measureCard(photo);
-    const info = { index: oc.pickConstellation(m), hue: m.hue, lum: m.lum };
-    const code = oc.encodeCode(info);
-    oc.rememberCode(code);
-    history.replaceState({ name: 'owncard', code }, ''); // back/refresh replays instead of reopening the camera
-    animate(oc, stage, top, photo, info, code);
+    oc.rememberCard(photo);
+    history.replaceState({ name: 'owncard', replay: true }, ''); // back/refresh replays instead of reopening the camera
+    animate(stage, top, photo);
   }, { once: true });
 }
 
-async function animate(oc, stage, top, photo, info, code) {
-  const { playConstellation, renderPoster } = await import('./sky-anim.js');
+async function animate(stage, top, photo) {
+  const { playCardRebuild } = await import('./card-rebuild.js');
   const sky = h('div', { class: 'sky' });
   const actions = h('div', { class: 'stage-actions oc-actions' });
   stage.replaceChildren(sky, top, h('div', { class: 'stage-bottom' }, actions));
-  const text = { assigned: S.ownCard.assigned, tagline: S.ownCard.tagline };
-  const opts = { photo, index: info.index, hue: info.hue, lum: info.lum, brandName: CONFIG.BRAND_NAME_FA, text };
   if (session) session.stop();
-  const ctrl = playConstellation(sky, { ...opts, onDone: () => showActions() });
+  const text = { title: S.ownCard.title, posterTitle: S.ownCard.posterTitle, tagline: S.ownCard.tagline };
+  const ctrl = playCardRebuild(sky, { photo, brandName: CONFIG.BRAND_NAME_FA, text, onDone: () => showActions() });
   session = ctrl;
-
   function showActions() {
-    const link = location.origin + location.pathname + '?c=' + code;
-    // the link box only appears when the phone cannot open its share sheet
-    const linkBox = h('input', { class: 'link-box', readonly: true, value: link, dir: 'ltr', 'aria-label': S.ownCard.link, hidden: true });
-    const note = h('p', { class: 'fine on-dark', hidden: true }, S.ownCard.linkHint);
     actions.replaceChildren(
       h('div', { class: 'oc-row' },
-        h('button', { class: 'btn primary', onclick: async () => saveBlob(await renderPoster({ ...opts, text: { ...text, assigned: S.ownCard.assignedPoster } }), 'constellation.png') }, S.ownCard.saveImage),
-        h('button', { class: 'btn', onclick: () => shareLink(link, linkBox, note) }, S.ownCard.link)),
-      linkBox, note,
+        h('button', { class: 'btn primary', onclick: async () => saveBlob(await ctrl.poster(), 'my-card.png') }, S.ownCard.saveImage),
+        h('button', { class: 'btn', onclick: () => animate(stage, top, photo) }, S.ownCard.replay)),
       h('div', { class: 'oc-row' },
         h('button', { class: 'btn ghost', onclick: () => go('owncard', {}, { replace: true }) }, S.ownCard.again),
         h('button', { class: 'btn ghost', onclick: () => go('scan', {}, { replace: true }) }, S.ownCard.backToCamera)),
@@ -397,12 +390,6 @@ async function saveBlob(blob, name) {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
-async function shareLink(link, box, note) {
-  try { if (navigator.share) { await navigator.share({ title: S.ownCard.yours, url: link }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
-  box.hidden = false; note.hidden = false;
-  try { await navigator.clipboard.writeText(link); note.textContent = S.ownCard.linkCopied + ' · ' + S.ownCard.linkHint; } catch (e) { box.select(); }
-}
-
 // ---- camera unavailable / denied: one plain screen ---------------------------------
 function showCameraHelp(code, retry) {
   const network = code === 'load';
@@ -421,12 +408,11 @@ function showCameraHelp(code, retry) {
 }
 
 // ---- start ----------------------------------------------------------------------------
-// ?c=<code> replays a personal constellation; ?mode=card opens the own-card camera.
+// ?mode=card opens the own-card camera (old ?c= constellation links do the same).
 {
   const params = new URLSearchParams(location.search);
   history.replaceState({ name: 'intro' }, '');
-  if (params.get('c')) go('owncard', { code: params.get('c') });
-  else if (params.get('mode') === 'card') go('owncard');
+  if (params.get('mode') === 'card' || params.get('c')) go('owncard');
   else if (params.get('from') === 'card') go('cardlanding', {}, { replace: true });
   else showIntro();
 }

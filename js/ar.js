@@ -54,7 +54,14 @@ function makeLabelLayer(container) {
 }
 function buildLabels(L, labels) {
   return labels.map((lb) => {
-    // a label with href is a tappable link pinned on the paper (the card's contact rows)
+    if (lb.hit) { // invisible tap area exactly over a part of the paper (the card's contact rows)
+      const a = document.createElement('a');
+      a.className = 'ar-hit'; a.href = lb.href; a.setAttribute('aria-label', lb.title);
+      if (!lb.href.startsWith('tel:')) { a.target = '_blank'; a.rel = 'noopener'; }
+      L.layer.appendChild(a);
+      return { box: a, dot: document.createElement('i'), line: document.createElementNS('http://www.w3.org/2000/svg', 'line'), hit: true };
+    }
+    // a label with href is a tappable link pinned on the paper
     const box = document.createElement(lb.href ? 'a' : 'div');
     box.className = 'ar-label' + (lb.warn ? ' warn' : '') + (lb.href ? ' ar-link ar-link-' + (lb.link || '') : '');
     if (lb.href) { box.href = lb.href; if (!lb.href.startsWith('tel:')) { box.target = '_blank'; box.rel = 'noopener'; } }
@@ -69,10 +76,20 @@ function buildLabels(L, labels) {
   });
 }
 function removeLabels(els) { (els || []).forEach((e) => { e.box.remove(); e.dot.remove(); e.line.remove(); }); }
-function hideLabels(els) { (els || []).forEach((e) => { e.box.style.opacity = '0'; e.dot.style.opacity = '0'; e.line.style.opacity = '0'; }); }
+function hideLabels(els) { (els || []).forEach((e) => { if (e.hit) e.box.style.display = 'none'; e.box.style.opacity = e.hit ? '' : '0'; e.dot.style.opacity = '0'; e.line.style.opacity = '0'; }); }
 function placeLabels(els, anchors, alphas, W, H) {
+  // tap areas follow the projected rectangle of their part of the paper
+  els.forEach((e, i) => {
+    if (!e.hit) return;
+    const a = anchors[i];
+    if (!a || alphas[i] < 0.5) { e.box.style.display = 'none'; return; }
+    e.box.style.display = 'block';
+    e.box.style.transform = `translate(${Math.round(a.l)}px, ${Math.round(a.t)}px)`;
+    e.box.style.width = Math.round(a.r - a.l) + 'px'; e.box.style.height = Math.round(a.b - a.t) + 'px';
+  });
+  els = els.map((e) => (e.hit ? { ...e, skip: true } : e));
   const placed = [];
-  const order = alphas.map((a, i) => i).filter((i) => alphas[i] > 0.01 && anchors[i]).sort((a, b) => (els[b].center - els[a].center) || alphas[b] - alphas[a] || (els[a].center ? a - b : b - a));
+  const order = alphas.map((a, i) => i).filter((i) => !els[i].skip && alphas[i] > 0.01 && anchors[i]).sort((a, b) => (els[b].center - els[a].center) || alphas[b] - alphas[a] || (els[a].center ? a - b : b - a));
   const shown = new Set();
   for (const i of order) {
     const e = els[i], [ax, ay] = anchors[i];
@@ -107,7 +124,7 @@ function placeLabels(els, anchors, alphas, W, H) {
     e.line.setAttribute('x1', ax); e.line.setAttribute('y1', ay); e.line.setAttribute('x2', cx); e.line.setAttribute('y2', ly);
     e.line.style.opacity = String(a * 0.9);
   }
-  els.forEach((e, i) => { if (!shown.has(i)) { e.box.style.opacity = '0'; e.dot.style.opacity = '0'; e.line.style.opacity = '0'; } });
+  els.forEach((e, i) => { if (!e.skip && !shown.has(i)) { e.box.style.opacity = '0'; e.dot.style.opacity = '0'; e.line.style.opacity = '0'; } });
 }
 
 const fail = (code, cause) => Object.assign(new Error(code), { code, cause });
@@ -281,7 +298,8 @@ export async function runAR(container, hooks = {}) {
       const pa = toScreen(-0.5, 0), pb = toScreen(0.5, 0), pc = toScreen(0, -slot.pageH / 2), pd = toScreen(0, slot.pageH / 2);
       const view = pa && pb && pc && pd ? { pageW: Math.hypot(pb[0] - pa[0], pb[1] - pa[1]), pageH: Math.hypot(pd[0] - pc[0], pd[1] - pc[1]), screenW: W, screenH: H } : null;
       slot.anim.update(slot.t, view);
-      if (slot.labelEls) placeLabels(slot.labelEls, slot.anim.labels.map((lb) => toScreen(lb.x, lb.y)), slot.anim.labelAlpha(slot.t), W, H);
+      const rectToScreen = (r) => { const c = [toScreen(r[0], r[1]), toScreen(r[2], r[1]), toScreen(r[2], r[3]), toScreen(r[0], r[3])]; if (c.some((q) => !q)) return null; const xs = c.map((q) => q[0]), ys = c.map((q) => q[1]); return { l: Math.min(...xs), r: Math.max(...xs), t: Math.min(...ys), b: Math.max(...ys) }; };
+      if (slot.labelEls) placeLabels(slot.labelEls, slot.anim.labels.map((lb) => (lb.rect ? rectToScreen(lb.rect) : toScreen(lb.x, lb.y))), slot.anim.labelAlpha(slot.t), W, H);
       const wantRotate = !!slot.anim.prefersPortrait && W > H * 1.15;
       if (wantRotate !== rotateShown) { rotateShown = wantRotate; status(wantRotate ? 'rotate' : 'tracking'); }
       if (!slot.done && slot.t >= slot.anim.duration) { slot.done = true; hooks.onDone && hooks.onDone(slot.doc.id); }

@@ -80,23 +80,21 @@ export const S = {
     ownCard: 'کارت ویزیت خودتان را امتحان کنید',
   },
 
-  // Visitor's own card -> constellation. Never say the card is "read" or "analysed":
-  // a constellation is "assigned" to it.
+  // Visitor's own card: it comes apart and is put back together. Never say the card is
+  // "read" or "analysed"; it is only rearranged as a picture.
   ownCard: {
     camButton: 'کارت شما',
     hint: 'کارت ویزیت خودتان را داخل کادر بگیرید',
     capture: 'گرفتن عکس',
-    privacy: 'عکس از گوشی شما خارج نمی‌شود و جایی ذخیره نمی‌شود.',
-    assigned: 'صورت فلکی نسبت‌داده‌شده به کارت شما',
-    assignedPoster: 'صورت فلکی نسبت‌داده‌شده به کارت من',
+    privacy: 'عکس از گوشی شما خارج نمی‌شود و فقط روی همین گوشی می‌ماند.',
+    title: 'کارت شما، دوباره چیده شد',
+    posterTitle: 'کارت من، دوباره چیده شد',
     tagline: 'از پراکندگی تا نظم',
     saveImage: 'ذخیرهٔ تصویر',
-    link: 'لینک صورت فلکی من',
-    linkCopied: 'لینک کپی شد',
-    linkHint: 'با این لینک، صورت فلکی شما هر وقت دوباره ساخته می‌شود.',
+    replay: 'دوباره ببینم',
     again: 'یک کارت دیگر',
     backToCamera: 'بازگشت به اسکن برگه‌ها',
-    yours: 'صورت فلکی شما',
+    yours: 'کارت شما',
     starting: 'در حال باز کردن دوربین…',
   },
 

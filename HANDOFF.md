@@ -31,18 +31,20 @@ Hard constraints still in force: works in Iran on domestic hosting with no forei
 | 3 | Floor plan, printed dimensions (CAD-style) | rooms highlight one by one with their areas, then the total (240 m²) | rooms, areas, draft materials/equipment list |
 | 4 | «صورتحساب فروش کالا» (printed) + yellow «رسید تحویل کالا به انبار» with **real handwriting** | invoice lines connect to receipt lines (different order); 5 ticked, 1 mismatch flagged: cartons billed 40, received 36 | discrepancy (4 short, 112,000 tomans), the receipt's note «یک بسته جدا میاد», "hold payment for this line" |
 
-| 5 / 6 | **Our business card**, A6 portrait 105 × 148 mm, two variants (client will choose): doc5 front = brand pieces scattered among stars; doc6 front = only sky. Back = QR only (`SITE_URL?from=card`) | doc5: pieces lift and fly into place; doc6: particles rise from the printed stars and form every shape; both: logo bloom + shockwave, finale glint, then tappable phone/Telegram/website links pinned on the card + «ذخیرهٔ مخاطب» + «کارت خودتان را هم امتحان کنید» (see CLAUDE.md 'round 5') | contact card |
+| 5 / 6 | **Our business card**, A6 portrait 105 × 148 mm, two variants (client will choose): doc5 front = brand pieces scattered among stars; doc6 front = only sky. Back = QR only (`SITE_URL?from=card`) | doc5: pieces lift and fly into place; doc6: every piece launches from a printed star as a point of light and flies into place like a comet; both: logo bloom + shockwave, the contact rows (drawn on the card) slide out of their icons, finale glint, then the rows are tappable (invisible tap areas) + «ذخیرهٔ مخاطب» + «کارت خودتان را هم امتحان کنید» (see CLAUDE.md 'round 5' and 'round 6') | contact card |
 
 All names and numbers are fictional; each sheet carries «نمونهٔ نمایشی».
 
-**Own-card flow:** framing + one-tap capture → photo becomes ~1400–2200 particles (halved automatically if frames > 24 ms) → scatter → one of 15 hand-coded constellations, chosen from the photo's dominant hue (6 families × 2 brightness) or, for white/grey/black cards, brightness only (3) → brand mark + «از پراکندگی تا نظم» → save image (1080×1350 PNG), personal replay link `?c=…`, remembered on the phone. Reachable from the camera screen, every result card, the card animation and `?mode=card` (print `print/qr-own-card.png` on the banner).
+**Own-card flow:** framing + one-tap capture → the visitor's own card is taken apart and rebuilt (`js/card-rebuild.js`): its logo, words and lines become separate pieces, burst into a galaxy of the card's colours, drift around the screen and land back exactly in place with gold lines and flashes (~9 s) → brand mark + «از پراکندگی تا نظم» → save image (1080×1350 PNG), replay; the photo is kept only on the phone so the intro offers «کارت شما». Reachable from the camera screen, every result card, the card animation and `?mode=card` (print `print/qr-own-card.png` on the banner).
 
 ## 4. Where things are
 ```
 index.html, css/app.css            shell (RTL, Vazirmatn self-hosted)
 js/config.js                       brand/contact placeholders, booth tap count
 js/strings.fa.js                   ALL visitor-facing UI text (Farsi only)
-js/app.js                          intro → camera screen → result overlay; progress dots; booth menu; camera-help screen
+js/app.js                          intro → camera screen → result overlay; progress dots; booth menu; camera-help screen; own card
+js/owncard.js, js/card-rebuild.js  own card: capture / take apart and rebuild
+js/docs/card-scene.js, card-fx.js  shared engine + effects of the two business-card animations
 js/ar.js                           MindAR, one anchor per document, scene created when first seen, pose smoothing ("lock")
 js/scene-kit.js                    shared three.js helpers (planes, cards, ribbons, rings, label painter)
 js/docs/targets.js                 order of documents inside targets/banner.mind
@@ -91,7 +93,7 @@ Phone photo of a filled form → SIFT + RANSAC homography onto the blank form �
 - Hosting for tests is GitHub Pages (client's public repo `holidays-cloud/expo-ar-demo`; the client uploads zips through the GitHub website). Production should move to the Parspack VPS with HTTPS (step 7).
 
 ## 8. What is left
-1. **Step 5, sky server + page** (only when the client asks): tiny Node server (no framework) on the same VPS; store constellation index, position, colour and timestamp only (no photos, no card contents); endpoints add star / list stars (since); rate limit (~1 star per minute per IP), body size limit, validation, escaping; SQLite or append-only file (say which and why); client-side offline queue; never fake visitor stars (a decorative background starfield is fine but must look different). The constellation code (`?c=` format in `js/owncard.js`) is the natural payload.
+1. **Step 5, sky server + page** (only when the client asks): tiny Node server (no framework) on the same VPS; store constellation index, position, colour and timestamp only (no photos, no card contents); endpoints add star / list stars (since); rate limit (~1 star per minute per IP), body size limit, validation, escaping; SQLite or append-only file (say which and why); client-side offline queue; never fake visitor stars (a decorative background starfield is fine but must look different). (The own card no longer produces a constellation code; if the sky is built, decide with the client what a visitor's star is, e.g. a point placed from the card's colours.)
 2. **Step 7, deployment notes** (Parspack VPS, nginx, Let's Encrypt or Parspack certificate) **and a phone test checklist.**
 - **Dropped by the client:** lead capture / contact forms (step 6) and the combined operations summary.
 - Before printing the business card: set the real `SITE_URL`, `BRAND_NAME_FA`, `PHONE`, `PHONE_DISPLAY_FA` in `js/config.js`, then `npm run print:card`, `npm run targets`, `npm run inspect`, rerun the confusion test, reprint.
