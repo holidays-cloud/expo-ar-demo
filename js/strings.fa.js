@@ -63,6 +63,21 @@ export const S = {
     call: 'تماس با ما',
     telegram: 'پیام در تلگرام',
     tryOwn: 'کارت خودتان را هم امتحان کنید',
+    web: 'وب‌سایت ما',
+    callSub: 'تماس',
+    telegramSub: 'گفت‌وگو با ما',
+    webSub: 'دیدن نمونه‌کارها',
+    linksHint: 'روی هر مورد بزنید',
+    telegramShort: 'تلگرام',
+    webShort: 'وب‌سایت',
+  },
+
+  // Opened from the QR code on the back of our card (?from=card)
+  cardLanding: {
+    title: 'از پراکندگی تا نظم',
+    body: 'روی کارت را با دوربین ببینید تا همه‌چیز سر جایش بنشیند.',
+    scanCard: 'اسکن روی کارت',
+    ownCard: 'کارت ویزیت خودتان را امتحان کنید',
   },
 
   // Visitor's own card -> constellation. Never say the card is "read" or "analysed":
@@ -89,6 +104,7 @@ export const S = {
     title: 'نمونهٔ نتیجه‌ها',
     note: 'ویژهٔ همکاران غرفه',
     cardDemo: 'انیمیشن کارت ویزیت',
+    cardDemo2: 'انیمیشن کارت ویزیت (آسمان)',
     close: 'بستن',
   },
 
@@ -98,6 +114,7 @@ export const S = {
     doc3: 'نقشهٔ طبقه',
     doc4: 'فاکتور و حوالهٔ تحویل',
     doc5: 'کارت ویزیت ما',
+    doc6: 'کارت ویزیت ما (آسمان)',
   },
 
   units: { m2: 'متر مربع' },

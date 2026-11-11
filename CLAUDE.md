@@ -148,3 +148,13 @@ Settings live at the top of `js/ar.js` plus `TRACKING_KEYFRAME` in `tools/vendor
 - **Booth menu** (5 taps on the logo) also plays our card's animation on screen without a camera (`openCardDemo` in app.js), then the three card buttons.
 - **Black-and-white printing is fine:** grey versions of all five documents were recognised (0 wrong, 0 missed) and tracked (Doc 4, card) in tests.
 - **Sky server (spec step 5): not started; wait for the client.**
+
+# Business card, round 5 (client's vision; overrides the Doc 5 description above)
+- **Front = scattered chaos, back = QR only.** The back's QR opens `SITE_URL?from=card` -> a landing screen («اسکن روی کارت» / «کارت ویزیت خودتان را امتحان کنید»). The front is the AR target.
+- **Two variants, the client will choose one later** (both are in `targets/banner.mind` for now; remove the other from `TARGET_ORDER`, `docs/index.js`, strings and the booth menu once chosen):
+  - **doc5 "scattered pieces":** the brand's own pieces (logo dots/bars, name words, tagline words, icons, constellation stars, gold shards) printed scattered and rotated among stars, nebulas and colour shards. Animation: the chaos calms, the pieces lift and fly (curved paths, star trails, dust galaxy) to their places; logo bloom + shockwave; shards snap; finale glint.
+  - **doc6 "out of the sky":** the front is only a night sky (Milky Way, nebulas, spiked stars), nothing distinguishable. Animation: the printed stars glow, particles of light rise from them (`STARS` in `doc6.layout.js`) and form every shape (targets sampled from the atlas), each shape turns crisp on arrival; same bloom/shockwave/finale.
+- **On the assembled card:** logo, name, «از پراکندگی تا نظم», what we do, and three **tappable links pinned on the card** (phone `tel:`, Telegram `t.me/`, website) via the ar.js label layer (`href` + `center` labels); below: «ذخیرهٔ مخاطب» (vCard) and «کارت خودتان را هم امتحان کنید». Where there is no AR (booth demo, contact card) the links are buttons.
+- **Pipeline:** `tools/print/doc5.print.js` (`buildCard`, variants 'pieces'/'sky'; modes front/back/ordered/atlas) -> `make-print` writes `print/docN.pdf` (2 pages: front, back), `print/docN.png`, `print/docN-back.png`, `img/docN.jpg` (front, the target), `img/docN-ordered.jpg`, `img/docN-atlas.png`, `js/docs/docN.layout.js` (ELEMENTS with ord/scat/atlas, STARS). Shared effects: `js/docs/card-fx.js`. Rebuild: `npm run print:card` (doc5) or `node tools/make-print.mjs doc6`, then `npm run targets`.
+- Tracking points: doc5 42, doc6 42; confusion test with all six documents (colour and black-and-white): 0 wrong, 0 missed.
+- Booth menu (5 taps on logo) has a demo for each card variant.

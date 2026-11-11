@@ -3,13 +3,19 @@
 import { S } from '../strings.fa.js';
 import { CONFIG } from '../config.js';
 import { h } from '../util.js';
-import { saveContact, contactLink } from '../contact.js';
+import { saveContact, contactLinks } from '../contact.js';
 
-export function cardActions({ onTryOwnCard } = {}) {
-  const link = contactLink();
+/**
+ * Buttons for the card. In the camera view the three contact links are pinned on the card
+ * itself (tappable), so only "save contact" and "try your own card" are needed; elsewhere
+ * (booth demo, contact card) pass {links: true} to also get the three links as buttons.
+ */
+export function cardActions({ onTryOwnCard, links = false } = {}) {
+  const short = { phone: S.card.callSub, telegram: S.card.telegramShort, web: S.card.webShort };
+  const linkRow = links ? [h('div', { class: 'link-row' }, contactLinks().map((l) => h('a', { class: 'btn link-btn', href: l.href, target: l.kind === 'phone' ? null : '_blank', rel: 'noopener' }, short[l.kind])))] : [];
   return [
+    ...linkRow,
     h('button', { class: 'btn primary wide', onclick: () => saveContact() }, S.card.saveContact),
-    h('a', { class: 'btn wide', href: link.href, target: link.kind === 'telegram' ? '_blank' : null, rel: 'noopener' }, link.kind === 'telegram' ? S.card.telegram : S.card.call),
     h('button', { class: 'btn wide', onclick: () => onTryOwnCard && onTryOwnCard() }, S.card.tryOwn),
   ];
 }
@@ -19,7 +25,7 @@ export function renderResult(opts = {}) {
     h('div', { class: 'contact-brand' }, CONFIG.BRAND_NAME_FA),
     h('p', { class: 'contact-tag' }, S.ownCard.tagline),
     h('p', { class: 'paper-note' }, CONFIG.BRAND_TAGLINE_FA),
-    h('div', { class: 'contact-actions' }, cardActions(opts)),
+    h('div', { class: 'contact-actions' }, cardActions({ ...opts, links: true })),
   );
 }
 export const resultTitle = () => S.card.title;

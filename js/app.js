@@ -29,6 +29,7 @@ window.addEventListener('popstate', (e) => {
 });
 function route(state) {
   if (state.name === 'scan') showScan();
+  else if (state.name === 'cardlanding') showCardLanding();
   else if (state.name === 'owncard') showOwnCard(state);
   else showIntro();
 }
@@ -104,6 +105,19 @@ async function showIntro() {
   preloadAR();
 }
 
+// ---- 1b. opened from the QR on the back of our card: scan the card, or your own -----------
+function showCardLanding() {
+  mount(h('main', { class: 'screen intro card-landing' },
+    logo('logo-intro'),
+    h('h1', {}, S.cardLanding.title),
+    h('p', { class: 'lead' }, S.cardLanding.body),
+    h('button', { class: 'btn primary wide', onclick: () => go('scan') }, S.cardLanding.scanCard),
+    h('button', { class: 'btn wide yours', onclick: () => go('owncard') }, '✦ ', S.cardLanding.ownCard),
+    h('p', { class: 'fine' }, S.intro.fine),
+  ));
+  preloadAR();
+}
+
 // ---- 2. camera screen -----------------------------------------------------------------
 function progressDots() {
   const p = loadProgress();
@@ -159,10 +173,10 @@ function showScan() {
           if (s === 'rotate') setHint(S.scan.rotate);
         },
         onDone: async (docId) => {
-          if (docId === 'doc5') {
-            // our business card: the three actions right on the camera screen
+          if (docId === 'doc5' || docId === 'doc6') {
+            // our business card: save contact + own card (the links are pinned on the card)
             markDone(docId); refreshDots();
-            const mod = await DOCS.find((d) => d.id === 'doc5').load();
+            const mod = await DOCS.find((d) => d.id === docId).load();
             actions.replaceChildren(h('div', { class: 'card-actions' }, mod.cardActions({ onTryOwnCard: () => go('owncard') })));
             return;
           }
@@ -225,7 +239,8 @@ function openBooth() {
       h('h2', {}, S.booth.title),
       h('p', { class: 'fine' }, S.booth.note),
       DOCS.map((d) => h('button', { class: 'btn wide', onclick: () => openResult(d.id, { sample: true, replace: true }) }, S.docs[d.id])),
-      h('button', { class: 'btn wide', onclick: () => openCardDemo() }, '✦ ', S.booth.cardDemo),
+      h('button', { class: 'btn wide', onclick: () => openCardDemo('doc5') }, '✦ ', S.booth.cardDemo),
+      h('button', { class: 'btn wide', onclick: () => openCardDemo('doc6') }, '✦ ', S.booth.cardDemo2),
       h('button', { class: 'btn ghost wide', onclick: () => history.back() }, S.booth.close),
     ));
   showOverlay(panel, null, false);
@@ -233,14 +248,14 @@ function openBooth() {
 
 // Booth only: our card's animation played on screen (no camera), with the card itself
 // drawn underneath, then the same three buttons as after a real scan.
-async function openCardDemo() {
+async function openCardDemo(docId = 'doc5') {
   const view = h('div', { class: 'demo-view' });
   const actions = h('div', { class: 'stage-actions demo-actions' });
   const panel = h('section', { class: 'overlay demo', role: 'dialog', 'aria-modal': 'true' },
     view, h('button', { class: 'btn round demo-close', 'aria-label': S.scan.close, onclick: () => history.back() }, '×'),
     h('div', { class: 'stage-bottom' }, actions));
   showOverlay(panel, null, true);
-  const [THREE, mod] = await Promise.all([import('../vendor/three/three.module.min.js'), DOCS.find((d) => d.id === 'doc5').load()]);
+  const [THREE, mod] = await Promise.all([import('../vendor/three/three.module.min.js'), DOCS.find((d) => d.id === docId).load()]);
   if (overlay !== panel) return;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -249,7 +264,7 @@ async function openCardDemo() {
   const camera = new THREE.PerspectiveCamera(30, 1, 0.01, 20);
   const anim = await mod.createScene(THREE, { mode: 'ar', renderer });
   // the "real" card under the animation
-  const tex = await new Promise((res) => new THREE.TextureLoader().load(new URL('../img/doc5.jpg', import.meta.url).href, res));
+  const tex = await new Promise((res) => new THREE.TextureLoader().load(new URL(`../img/${docId}.jpg`, import.meta.url).href, res));
   tex.colorSpace = THREE.SRGBColorSpace;
   const H = anim.pageH;
   const card = new THREE.Mesh(new THREE.PlaneGeometry(1, H), new THREE.MeshBasicMaterial({ map: tex }));
@@ -269,7 +284,7 @@ async function openCardDemo() {
   renderer.setAnimationLoop(() => {
     const t = (performance.now() - t0) / 1000;
     anim.update(t);
-    if (!done && t >= anim.duration) { done = true; actions.replaceChildren(h('div', { class: 'card-actions' }, mod.cardActions({ onTryOwnCard: () => { closeOverlay(true); go('owncard', {}, { replace: true }); } }))); }
+    if (!done && t >= anim.duration) { done = true; actions.replaceChildren(h('div', { class: 'card-actions' }, mod.cardActions({ links: true, onTryOwnCard: () => { closeOverlay(true); go('owncard', {}, { replace: true }); } }))); }
     renderer.render(scene, camera);
   });
   panel._dispose = () => { renderer.setAnimationLoop(null); window.removeEventListener('resize', fit); anim.dispose(); tex.dispose(); card.geometry.dispose(); card.material.dispose(); renderer.dispose(); };
@@ -324,6 +339,7 @@ async function showOwnCard(state = {}) {
   try {
     stopCam = await oc.openCamera(video);
   } catch (e) {
+    if (!stage.isConnected) return; // the visitor already left this screen
     console.warn('camera failed', e);
     showCameraHelp(e.code || 'failed', () => showOwnCard(state));
     return;
@@ -411,5 +427,6 @@ function showCameraHelp(code, retry) {
   history.replaceState({ name: 'intro' }, '');
   if (params.get('c')) go('owncard', { code: params.get('c') });
   else if (params.get('mode') === 'card') go('owncard');
+  else if (params.get('from') === 'card') go('cardlanding', {}, { replace: true });
   else showIntro();
 }

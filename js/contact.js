@@ -1,6 +1,7 @@
 // Contact helpers for the business card: a vCard built on the phone (no server) and the
 // contact link (phone or Telegram, from config.js).
 import { CONFIG } from './config.js';
+import { S } from './strings.fa.js';
 
 export function vcardText() {
   const esc = (s) => String(s).replace(/([,;\\])/g, '\\$1');
@@ -29,6 +30,15 @@ export async function saveContact() {
   a.href = url; a.download = 'contact.vcf';
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+/** The three contact links shown on the assembled card (and as buttons where there is no AR). */
+export function contactLinks() {
+  return [
+    { kind: 'phone', href: `tel:${CONFIG.PHONE}`, label: CONFIG.PHONE_DISPLAY_FA, sub: S.card.callSub },
+    { kind: 'telegram', href: `https://t.me/${CONFIG.TELEGRAM_ID}`, label: S.card.telegram, sub: S.card.telegramSub },
+    { kind: 'web', href: CONFIG.SITE_URL, label: S.card.web, sub: S.card.webSub },
+  ];
 }
 
 export function contactLink() {

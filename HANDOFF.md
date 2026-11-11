@@ -31,7 +31,7 @@ Hard constraints still in force: works in Iran on domestic hosting with no forei
 | 3 | Floor plan, printed dimensions (CAD-style) | rooms highlight one by one with their areas, then the total (240 m²) | rooms, areas, draft materials/equipment list |
 | 4 | «صورتحساب فروش کالا» (printed) + yellow «رسید تحویل کالا به انبار» with **real handwriting** | invoice lines connect to receipt lines (different order); 5 ticked, 1 mismatch flagged: cartons billed 40, received 36 | discrepancy (4 short, 112,000 tomans), the receipt's note «یک بسته جدا میاد», "hold payment for this line" |
 
-| 5 | **Our business card**, A6 portrait 105 × 148 mm (brand, tagline, phone, QR to the site from `js/config.js`) | logo, name and lines start scattered and resolve into place; then 3 buttons: save contact (vCard), call/Telegram, «کارت خودتان را هم امتحان کنید» | contact card (no 'prepared' note: it is our real contact) |
+| 5 / 6 | **Our business card**, A6 portrait 105 × 148 mm, two variants (client will choose): doc5 front = brand pieces scattered among stars; doc6 front = only sky. Back = QR only (`SITE_URL?from=card`) | doc5: pieces lift and fly into place; doc6: particles rise from the printed stars and form every shape; both: logo bloom + shockwave, finale glint, then tappable phone/Telegram/website links pinned on the card + «ذخیرهٔ مخاطب» + «کارت خودتان را هم امتحان کنید» (see CLAUDE.md 'round 5') | contact card |
 
 All names and numbers are fictional; each sheet carries «نمونهٔ نمایشی».
 

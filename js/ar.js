@@ -54,28 +54,41 @@ function makeLabelLayer(container) {
 }
 function buildLabels(L, labels) {
   return labels.map((lb) => {
-    const box = document.createElement('div');
-    box.className = 'ar-label' + (lb.warn ? ' warn' : '');
+    // a label with href is a tappable link pinned on the paper (the card's contact rows)
+    const box = document.createElement(lb.href ? 'a' : 'div');
+    box.className = 'ar-label' + (lb.warn ? ' warn' : '') + (lb.href ? ' ar-link ar-link-' + (lb.link || '') : '');
+    if (lb.href) { box.href = lb.href; if (!lb.href.startsWith('tel:')) { box.target = '_blank'; box.rel = 'noopener'; } }
     const t = document.createElement('span'); t.className = 't'; t.textContent = lb.title; box.appendChild(t);
     if (lb.sub) { const s = document.createElement('span'); s.className = 's'; s.textContent = lb.sub; box.appendChild(s); }
     const dot = document.createElement('i'); dot.className = 'ar-dot' + (lb.warn ? ' warn' : '');
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('class', 'ar-leader' + (lb.warn ? ' warn' : ''));
     L.layer.appendChild(dot); L.layer.appendChild(box); L.svg.appendChild(line);
-    return { box, dot, line, w: 0, h: 0 };
+    if (lb.center) { dot.style.display = 'none'; line.style.display = 'none'; }
+    return { box, dot, line, w: 0, h: 0, center: !!lb.center };
   });
 }
 function removeLabels(els) { (els || []).forEach((e) => { e.box.remove(); e.dot.remove(); e.line.remove(); }); }
 function hideLabels(els) { (els || []).forEach((e) => { e.box.style.opacity = '0'; e.dot.style.opacity = '0'; e.line.style.opacity = '0'; }); }
 function placeLabels(els, anchors, alphas, W, H) {
   const placed = [];
-  const order = alphas.map((a, i) => i).filter((i) => alphas[i] > 0.01 && anchors[i]).sort((a, b) => alphas[b] - alphas[a] || b - a);
+  const order = alphas.map((a, i) => i).filter((i) => alphas[i] > 0.01 && anchors[i]).sort((a, b) => (els[b].center - els[a].center) || alphas[b] - alphas[a] || (els[a].center ? a - b : b - a));
   const shown = new Set();
   for (const i of order) {
     const e = els[i], [ax, ay] = anchors[i];
     if (!e.w) { e.w = e.box.offsetWidth; e.h = e.box.offsetHeight; }
     const w = e.w, h = e.h;
     const cx = Math.max(8 + w / 2, Math.min(W - 8 - w / 2, ax));
+    if (e.center) { // centred on its point (link rows); if it would overlap, stack below the previous one
+      let t = Math.max(LABEL_TOP_SAFE, Math.min(H - LABEL_BOTTOM_SAFE - h, ay - h / 2));
+      for (const p of placed) if (cx - w / 2 < p.r && cx + w / 2 > p.l && t < p.b && t + h > p.t) t = p.b + 4;
+      placed.push({ l: cx - w / 2 - 4, r: cx + w / 2 + 4, t: t - 4, b: t + h + 4 });
+      shown.add(i);
+      e.box.style.transform = `translate(${Math.round(cx - w / 2)}px, ${Math.round(t)}px)`;
+      e.box.style.opacity = String(alphas[i]);
+      e.box.style.pointerEvents = alphas[i] > 0.5 ? 'auto' : 'none';
+      continue;
+    }
     const tries = [ay - LABEL_GAP - h, ay + LABEL_GAP];
     let top = null;
     for (const t0 of tries) {
