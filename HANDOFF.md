@@ -35,7 +35,7 @@ Hard constraints still in force: works in Iran on domestic hosting with no forei
 
 All names and numbers are fictional; each sheet carries «نمونهٔ نمایشی».
 
-**Own-card flow:** framing + one-tap capture → the visitor's own card is taken apart and rebuilt (`js/card-rebuild.js`): its logo, words and lines become separate pieces, burst into a galaxy of the card's colours, drift around the screen and land back exactly in place with gold lines and flashes (~9 s) → brand mark + «از پراکندگی تا نظم» → save image (1080×1350 PNG), replay; the photo is kept only on the phone so the intro offers «کارت شما». Reachable from the camera screen, every result card, the card animation and `?mode=card` (print `print/qr-own-card.png` on the banner).
+**Own-card flow:** framing + one-tap capture → the visitor's card becomes a constellation of its own design (`js/card-stars.js`): its logo, name and lines light up as thousands of stars in the card's colours, burst into a spinning galaxy, then fly back into the exact design with gold constellation lines (~10.5 s) → «کارت شما، در آسمان» + brand mark → save image (1080×1350 PNG), replay; the photo is kept only on the phone so the intro offers «کارت شما». Reachable from the camera screen, every result card, the card animation and `?mode=card` (print `print/qr-own-card.png` on the banner).
 
 ## 4. Where things are
 ```
@@ -43,7 +43,7 @@ index.html, css/app.css            shell (RTL, Vazirmatn self-hosted)
 js/config.js                       brand/contact placeholders, booth tap count
 js/strings.fa.js                   ALL visitor-facing UI text (Farsi only)
 js/app.js                          intro → camera screen → result overlay; progress dots; booth menu; camera-help screen; own card
-js/owncard.js, js/card-rebuild.js  own card: capture / take apart and rebuild
+js/owncard.js, js/card-stars.js    own card: capture / constellation of the card's design (helpers: card-util.js)
 js/docs/card-scene.js, card-fx.js  shared engine + effects of the two business-card animations
 js/ar.js                           MindAR, one anchor per document, scene created when first seen, pose smoothing ("lock")
 js/scene-kit.js                    shared three.js helpers (planes, cards, ribbons, rings, label painter)
@@ -93,7 +93,7 @@ Phone photo of a filled form → SIFT + RANSAC homography onto the blank form �
 - Hosting for tests is GitHub Pages (client's public repo `holidays-cloud/expo-ar-demo`; the client uploads zips through the GitHub website). Production should move to the Parspack VPS with HTTPS (step 7).
 
 ## 8. What is left
-1. **Step 5, sky server + page** (only when the client asks): tiny Node server (no framework) on the same VPS; store constellation index, position, colour and timestamp only (no photos, no card contents); endpoints add star / list stars (since); rate limit (~1 star per minute per IP), body size limit, validation, escaping; SQLite or append-only file (say which and why); client-side offline queue; never fake visitor stars (a decorative background starfield is fine but must look different). (The own card no longer produces a constellation code; if the sky is built, decide with the client what a visitor's star is, e.g. a point placed from the card's colours.)
+1. **Step 5, sky server + page** (only when the client asks): tiny Node server (no framework) on the same VPS; store constellation index, position, colour and timestamp only (no photos, no card contents); endpoints add star / list stars (since); rate limit (~1 star per minute per IP), body size limit, validation, escaping; SQLite or append-only file (say which and why); client-side offline queue; never fake visitor stars (a decorative background starfield is fine but must look different). (If the sky is built, a visitor's entry could be a small, anonymised version of their constellation (anchor points + lines only, no photo, no text); decide with the client.)
 2. **Step 7, deployment notes** (Parspack VPS, nginx, Let's Encrypt or Parspack certificate) **and a phone test checklist.**
 - **Dropped by the client:** lead capture / contact forms (step 6) and the combined operations summary.
 - Before printing the business card: set the real `SITE_URL`, `BRAND_NAME_FA`, `PHONE`, `PHONE_DISPLAY_FA` in `js/config.js`, then `npm run print:card`, `npm run targets`, `npm run inspect`, rerun the confusion test, reprint.

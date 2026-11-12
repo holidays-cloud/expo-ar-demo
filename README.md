@@ -9,7 +9,7 @@ Plain static site (ES modules, no build step) plus Node scripts in `tools/` that
 4. If the camera is denied or unavailable: one plain screen with how to allow it, what to do inside Telegram/Instagram, and "ask our staff".
 
 5. **Our business card** (A6, two variants to choose from: Doc 5 "scattered pieces", Doc 6 "out of the sky"). Front = scattered night sky (scan it), back = QR only (opens a screen: scan the card or try your own). When scanned, everything assembles into the ordered card; its phone / Telegram / website rows are tappable, plus «ذخیرهٔ مخاطب».
-6. **Own card, taken apart and rebuilt:** from the «کارت شما» button on the camera screen, under every result card, after the card animation, or the link `?mode=card` (QR in `print/qr-own-card.png`). The visitor's card breaks into its own pieces, they swirl around and land back in place. Save image, replay; remembered on the phone only.
+6. **Own card → constellation of its own design:** from the «کارت شما» button on the camera screen, under every result card, after the card animation, or the link `?mode=card` (QR in `print/qr-own-card.png`). The card's logo, name and lines turn into stars, swirl into a galaxy and come back as the card drawn in stars with gold lines. Save image, replay; remembered on the phone only.
 
 **Booth staff only:** tap the logo 5 times within 3 seconds to open the sample results and the business-card animation (no scanning needed).
 

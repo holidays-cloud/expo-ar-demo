@@ -316,7 +316,7 @@ function closeOverlay(silent = false) {
   if (refreshDotsFn) refreshDotsFn();
 }
 
-// ---- 3. the visitor's own card: it comes apart and is put back together ----------------
+// ---- 3. the visitor's own card becomes a constellation of its own design ---------------
 async function showOwnCard(state = {}) {
   const oc = await import('./owncard.js');
   const stage = h('main', { class: 'stage owncard' });
@@ -360,13 +360,12 @@ async function showOwnCard(state = {}) {
 }
 
 async function animate(stage, top, photo) {
-  const { playCardRebuild } = await import('./card-rebuild.js');
+  const { playCardStars } = await import('./card-stars.js');
   const sky = h('div', { class: 'sky' });
   const actions = h('div', { class: 'stage-actions oc-actions' });
   stage.replaceChildren(sky, top, h('div', { class: 'stage-bottom' }, actions));
   if (session) session.stop();
-  const text = { title: S.ownCard.title, posterTitle: S.ownCard.posterTitle, tagline: S.ownCard.tagline };
-  const ctrl = playCardRebuild(sky, { photo, brandName: CONFIG.BRAND_NAME_FA, text, onDone: () => showActions() });
+  const ctrl = playCardStars(sky, { photo, brandName: CONFIG.BRAND_NAME_FA, title: S.ownCard.title, posterTitle: S.ownCard.posterTitle, onDone: () => showActions() });
   session = ctrl;
   function showActions() {
     actions.replaceChildren(

@@ -1,6 +1,6 @@
 // Own-card flow, part 1: camera with a framing outline and one-tap capture.
 // Nothing is uploaded. The captured card is kept only on this phone (localStorage) so the
-// intro can offer to watch it again; part 2 is js/card-rebuild.js.
+// intro can offer to watch it again; part 2 is js/card-stars.js.
 export const CARD_ASPECT = 85 / 55; // standard business card, landscape
 
 /** Opens the rear camera into `video`. Throws Error with .code like ar.js does. */

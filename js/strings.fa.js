@@ -80,15 +80,15 @@ export const S = {
     ownCard: 'کارت ویزیت خودتان را امتحان کنید',
   },
 
-  // Visitor's own card: it comes apart and is put back together. Never say the card is
-  // "read" or "analysed"; it is only rearranged as a picture.
+  // Visitor's own card: it becomes a constellation of its own design. Never say the card is
+  // "read" or "analysed"; it is only transformed as a picture.
   ownCard: {
     camButton: 'کارت شما',
     hint: 'کارت ویزیت خودتان را داخل کادر بگیرید',
     capture: 'گرفتن عکس',
     privacy: 'عکس از گوشی شما خارج نمی‌شود و فقط روی همین گوشی می‌ماند.',
-    title: 'کارت شما، دوباره چیده شد',
-    posterTitle: 'کارت من، دوباره چیده شد',
+    title: 'کارت شما، در آسمان',
+    posterTitle: 'کارت من، در آسمان',
     tagline: 'از پراکندگی تا نظم',
     saveImage: 'ذخیرهٔ تصویر',
     replay: 'دوباره ببینم',
